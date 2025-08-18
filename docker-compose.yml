@@ -1,0 +1,47 @@
+﻿version: "3.9"
+name: assurance-infra
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: mysql-assurance
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: assurance
+      MYSQL_USER: app
+      MYSQL_PASSWORD: app
+    ports:
+      - "3306:3306"   # si 3306 est déjà pris sur ta machine, remplace par "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  backend:
+    build:
+      context: ./backend-assurance
+      dockerfile: Dockerfile
+    container_name: backend-assurance
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/assurance?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      # (si tu utilises la validation OIDC côté backend, ajoute:)
+      # KEYCLOAK_ISSUER_URI: http://localhost:9090/realms/assurance
+    ports:
+      - "9099:8080"
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./frontend-assurance
+      dockerfile: Dockerfile
+    container_name: frontend-assurance
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:

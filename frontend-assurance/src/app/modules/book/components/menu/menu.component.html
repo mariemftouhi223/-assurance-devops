@@ -1,0 +1,46 @@
+<!-- Sidebar SEULEMENT - NAVIGATION PURE -->
+<div class="sidebar position-fixed top-0 start-0 vh-100 bg-dark text-light p-3" style="width: 230px; z-index: 1000;">
+  <nav class="navbar navbar-expand-lg flex-column align-items-start">
+    <a class="navbar-brand text-light mb-4" href="javascript:void(0)">
+      <i class="fas fa-user-shield me-2"></i> AntiFraude
+    </a>
+    <ul class="navbar-nav flex-column w-100">
+      <li class="nav-item mb-2">
+        <a class="nav-link text-light" routerLink="/dashboard" routerLinkActive="active">
+          <i class="fas fa-shield-alt me-2"></i> Tableau de bord
+        </a>
+      </li>
+
+      <li class="nav-item mb-2">
+        <a class="nav-link text-light" routerLink="/insured" routerLinkActive="active">
+          <i class="fas fa-user-md me-2"></i> Gestion des assurés
+        </a>
+      </li>
+
+      <li class="nav-item mb-2">
+        <a class="nav-link text-light" routerLink="/claims" routerLinkActive="active">
+          <i class="fas fa-file-invoice me-2"></i> Sinistres et remboursement
+        </a>
+      </li>
+
+      <li class="nav-item mb-2">
+        <a class="nav-link text-light" routerLink="/fraud-detection" routerLinkActive="active">
+          <i class="fas fa-search-dollar me-2"></i> Détection de fraude
+        </a>
+      </li>
+
+      <!-- 🔹 NOUVEL ITEM -->
+      <li class="nav-item mb-2">
+        <a class="nav-link text-light" routerLink="/fraud-cases" routerLinkActive="active">
+          <i class="fas fa-exclamation-triangle me-2"></i> Cas frauduleux
+        </a>
+      </li>
+
+      <li class="nav-item mb-2">
+        <a class="nav-link text-light" routerLink="/statistics" routerLinkActive="active">
+          <i class="fas fa-poll me-2"></i> Statistiques
+        </a>
+      </li>
+    </ul>
+  </nav>
+</div>

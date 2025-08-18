@@ -1,0 +1,18 @@
+=== DIAGNOSTIC APPLICATION ANTI-FRAUDE ===
+Wed Jun 25 13:20:42     2025
+==========================================
+
+1. VÉRIFICATION DES SERVICES
+==============================
+✅ Port 9099 ouvert - Spring Boot Backend démarré
+✅ Port 4200 ouvert - Angular Frontend démarré
+✅ Port 8080 ouvert - Keycloak démarré
+❌ Port 5000 fermé - Service ML Python non démarré
+
+2. TEST DES ENDPOINTS SPRING BOOT
+==================================
+🔍 Health Check: http://localhost:9099/api/v1/fraud/health => HTTP 401
+🔍 Contrats: http://localhost:9099/api/v1/contracts => HTTP 401
+🔍 Prédiction: http://localhost:9099/api/v1/fraud/predict => HTTP 401
+🔍 ML Health: http://localhost:5000/health => HTTP 000
+🔍 ML Predict: http://localhost:5000/predict => HTTP 000

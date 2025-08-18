@@ -1,0 +1,111 @@
+spring:
+  main:
+    allow-bean-definition-overriding: true
+    web-application-type: servlet
+  datasource:
+    url: jdbc:mysql://localhost:3306/assurance?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: ""
+    # Configuration de pool de connexions pour améliorer les performances
+    hikari:
+      connection-test-query: SELECT 1
+      connection-timeout: 20000
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1200000
+  jpa:
+    hibernate:
+      ddl-auto: update  # Utilise 'create-drop' pour recréer la table si nécessaire
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        # Améliorer les performances
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+    database: mysql
+    # Afficher les statistiques Hibernate
+    generate-ddl: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9090/realms/assurance
+          jwk-set-uri: http://localhost:9090/realms/assurance/protocol/openid-connect/certs
+    cors:
+      allowed-origins: "http://localhost:4200"
+      allowed-methods: "*"
+      allowed-headers: "*"
+      allow-credentials: true
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  websocket:
+    allowed-origins: "http://localhost:4200"
+
+application:
+  name: assurance-fraud-detection
+  file:
+    uploads:
+      photos-output-path: ./uploads
+
+ml:
+  v1:
+    base-url: http://localhost:5000
+    endpoint: /predict
+    timeout: 5000
+  v2:
+    base-url: http://localhost:5001
+    endpoint: /predict
+    timeout: 5000
+  service:
+    auth-token: your-ml-service-token
+    retry-attempts: 3
+
+springdoc:
+  default-produces-media-type: application/json
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /docs
+    enabled: true
+    oauth2:
+      authorization-url: http://localhost:9090/realms/assurance/protocol/openid-connect/auth
+      token-url: http://localhost:9090/realms/assurance/protocol/openid-connect/token
+      client-id: swagger-client
+      client-secret: 2UF4FU9DkfoeK2Nh1nW6UxQCnvZvX8my
+
+# ✅ PORT CORRIGÉ - Utilisez http://localhost:9099
+server:
+  port: 9099
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    com.mariem.assurance: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    com.mariem.assurance.ml: TRACE
+    # Réduire le niveau de log pour éviter trop de verbosité
+    org.springframework.web: INFO
+    org.springframework.boot: INFO
+    root: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: mappings,health,info
+
+websocket:
+  notification:
+    endpoint: /ws/notifications

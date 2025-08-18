@@ -1,0 +1,30 @@
+<div class="app-layout">
+  <!-- Menu de navigation -->
+  <app-menu></app-menu>
+
+  <!-- Zone de contenu principal avec header global -->
+  <div class="content-area" style="margin-left: 230px; padding: 0; min-height: 100vh; background: linear-gradient(to right, #f4f6f7, #e9ecef);">
+
+    <!-- Header global pour toute l'application -->
+    <div class="topbar d-flex justify-content-between align-items-center px-4 py-3 shadow-sm bg-white"
+         style="position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #dee2e6; margin: 0;">
+
+      <div class="right d-flex align-items-center gap-4">
+        <i class="fas fa-bell fs-5 text-secondary" title="Notifications"></i>
+        <span class="fw-semibold">Bienvenue, <span class="text-danger">Mariem</span></span>
+        <button type="button"
+                class="btn btn-outline-danger btn-sm"
+                (click)="logout()">
+          <i class="fas fa-sign-out-alt"></i> Déconnexion
+        </button>
+
+      </div>
+    </div>
+
+    <!-- Zone de contenu des composants - SANS PADDING EN HAUT -->
+    <div class="page-content" style="padding: 0; margin: 0;">
+      <router-outlet></router-outlet>
+    </div>
+
+  </div>
+</div>

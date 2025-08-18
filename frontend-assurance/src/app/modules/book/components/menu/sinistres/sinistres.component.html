@@ -1,0 +1,386 @@
+<div class="sinistres-container">
+
+  <!-- ======================= HEADER ======================= -->
+  <div class="header-section">
+    <div class="header-title d-flex justify-content-between align-items-center">
+
+      <h2 class="mb-0">
+        <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+        Gestion des Sinistres
+      </h2>
+
+      <!-- Actions à droite : texte résultats + Notifications + Reset -->
+      <div class="d-flex align-items-center">
+
+        <div class="results-info text-muted me-3">
+          Affichage de <strong>{{ getStartIndex() }}</strong> à <strong>{{ getEndIndex() }}</strong>
+          sur <strong>{{ totalElements | number }}</strong> sinistres
+        </div>
+
+        <!-- Bouton NOTIFICATIONS (en haut, style Assurés) -->
+        <button
+          type="button"
+          class="btn btn-primary px-4 py-2 me-3 d-flex align-items-center"
+          (click)="showNotifications = !showNotifications"
+        >
+          <i class="fas fa-bell me-2"></i>
+          <span>Notifications</span>
+          <span
+            *ngIf="getActiveNotifications().length > 0"
+            class="badge bg-danger ms-2"
+          >
+            {{ getActiveNotifications().length }}
+          </span>
+        </button>
+
+        <!-- Reset filtres (à droite du bouton Notifs) -->
+        <button type="button" class="btn btn-outline-secondary px-4 py-2" (click)="resetFilters()">
+          <i class="fas fa-filter me-2"></i> Reset Filtres
+        </button>
+      </div>
+    </div>
+
+    <!-- Cartes stats -->
+    <div class="fraud-stats-cards mt-3" *ngIf="statistiques">
+      <div class="stat-card stat-total">
+        <div class="stat-icon"><i class="fas fa-list"></i></div>
+        <div class="stat-content">
+          <div class="stat-number">{{ statistiques.totalSinistres | number }}</div>
+          <div class="stat-label">Total Sinistres</div>
+        </div>
+      </div>
+
+      <div class="stat-card stat-fraud" [class.alert-danger]="statistiques.fraudulentCount > 0">
+        <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="stat-content">
+          <div class="stat-number">{{ statistiques.fraudulentCount | number }}</div>
+          <div class="stat-label">Fraudes Détectées</div>
+          <div class="stat-percentage">{{ statistiques.fraudPercentage }}%</div>
+        </div>
+      </div>
+
+      <div class="stat-card stat-high-risk">
+        <div class="stat-icon"><i class="fas fa-shield-alt"></i></div>
+        <div class="stat-content">
+          <div class="stat-number">{{ statistiques.highRiskCount | number }}</div>
+          <div class="stat-label">Haut Risque</div>
+        </div>
+      </div>
+
+      <div class="stat-card stat-medium-risk">
+        <div class="stat-icon"><i class="fas fa-info-circle"></i></div>
+        <div class="stat-content">
+          <div class="stat-number">{{ statistiques.mediumRiskCount | number }}</div>
+          <div class="stat-label">Risque Moyen</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== NOTIFICATIONS =================== -->
+  <div class="fraud-notifications mt-3" *ngIf="showNotifications && getActiveNotifications().length > 0">
+    <div class="notifications-header d-flex justify-content-between align-items-center mb-2">
+      <h4 class="mb-0"><i class="fas fa-bell text-warning"></i> Alertes de Fraude ML - Sinistres</h4>
+      <button class="btn btn-sm btn-outline-secondary" (click)="clearAllNotifications()">
+        <i class="fas fa-times"></i> Tout effacer
+      </button>
+    </div>
+
+    <div class="notifications-list">
+      <div *ngFor="let notification of getActiveNotifications()"
+           class="notification-item"
+           [ngClass]="'notification-' + notification.type">
+        <div class="notification-content">
+          <div class="notification-title">{{ notification.title }}</div>
+          <div class="notification-message">{{ notification.message }}</div>
+          <div class="notification-time">{{ notification.timestamp | date:'short' }}</div>
+        </div>
+        <div class="notification-actions">
+          <button class="btn btn-sm btn-primary"
+                  (click)="showFraudDetailsFromNotification(notification.sinistreId)">
+            Détails
+          </button>
+          <button class="btn btn-sm btn-outline-secondary"
+                  (click)="dismissNotification(notification.id)">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== FILTRES + CRUD =================== -->
+  <div class="filters-section mt-3">
+    <div class="row g-2">
+      <div class="col-md-3">
+        <input type="text"
+               class="form-control"
+               placeholder="🔍 Rechercher…"
+               [(ngModel)]="searchText"
+               (keyup.enter)="searchSinistres()">
+      </div>
+      <div class="col-md-2">
+        <select class="form-select" [(ngModel)]="selectedNature" (change)="searchSinistres()">
+          <option value="">Toutes natures</option>
+          <option value="CORPOREL">Corporel</option>
+          <option value="MATERIEL">Matériel</option>
+          <option value="MIXTE">Mixte</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select class="form-select" [(ngModel)]="selectedEtat" (change)="searchSinistres()">
+          <option value="">Tous états</option>
+          <option value="CLOTURE">Clôturé</option>
+          <option value="MISE A JOUR">Mise à jour</option>
+          <option value="REPRISE">Reprise</option>
+          <option value="REOUVERTURE">Réouverture</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select class="form-select" [(ngModel)]="fraudFilter" (change)="searchSinistres()">
+          <option value="">Tous les sinistres</option>
+          <option value="fraud">Fraudes uniquement</option>
+          <option value="high-risk">Haut risque</option>
+          <option value="medium-risk">Risque moyen</option>
+          <option value="normal">Normaux</option>
+        </select>
+      </div>
+      <div class="col-md-1">
+        <select class="form-select" [(ngModel)]="pageSize" (change)="onPageSizeChange(pageSize)">
+          <option *ngFor="let size of pageSizeOptions" [value]="size">{{ size }} / page</option>
+        </select>
+      </div>
+      <div class="col-md-2 text-end">
+        <div class="btn-group w-100">
+          <button class="btn btn-success" (click)="createSinistre({})">
+            <i class="fas fa-plus-circle"></i> Ajouter
+          </button>
+          <button class="btn btn-outline-secondary" (click)="resetFilters()">
+            <i class="fas fa-filter"></i> Reset
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== ERREUR =================== -->
+  <div *ngIf="error" class="alert alert-danger alert-dismissible fade show mt-3">
+    <i class="fas fa-exclamation-circle"></i> {{ error }}
+    <button type="button" class="btn-close" (click)="closeError()"></button>
+  </div>
+
+  <!-- =================== LOADER =================== -->
+  <div *ngIf="loading" class="text-center my-4">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Chargement des données ML...</span>
+    </div>
+    <div class="mt-2">Analyse ML en cours...</div>
+  </div>
+
+  <!-- =================== TABLEAU =================== -->
+  <div class="table-responsive mt-3" *ngIf="!loading && sinistres.length > 0">
+    <table class="table table-bordered table-striped table-hover">
+      <thead class="table-dark">
+      <tr>
+        <th class="text-center" style="width:80px;">
+          <i class="fas fa-shield-alt text-warning"></i><br><small>Statut ML</small>
+        </th>
+        <th class="sortable" (click)="onSort('numSinistre')">N° Sinistre <i class="fas fa-sort ms-1"></i></th>
+        <th class="sortable" (click)="onSort('anneeExercice')">Année <i class="fas fa-sort ms-1"></i></th>
+        <th class="sortable" (click)="onSort('numContrat')">N° Contrat <i class="fas fa-sort ms-1"></i></th>
+        <th class="sortable" (click)="onSort('dateDeclaration')">Date Déclaration <i class="fas fa-sort ms-1"></i></th>
+        <th>Nature</th>
+        <th>Type</th>
+        <th>État</th>
+        <th class="sortable" (click)="onSort('montantEvaluationBrut')">Montant Évaluation <i class="fas fa-sort ms-1"></i></th>
+        <th class="sortable" (click)="onSort('totalReglementBrut')">Total Règlement <i class="fas fa-sort ms-1"></i></th>
+        <th>Lieu Accident</th>
+        <th>Gouvernorat</th>
+        <th>Compagnie Adverse</th>
+        <th class="text-center" style="width:160px;">Actions</th>
+      </tr>
+      </thead>
+
+      <tbody>
+      <tr *ngFor="let sinistre of sinistres; trackBy: trackBySinistre"
+          [class.table-danger]="(sinistre.fraudDetection?.isFraud ?? false) && ((sinistre.fraudDetection?.confidence ?? 0) > 0.8)"
+          [class.table-warning]="(sinistre.fraudDetection?.isFraud ?? false) && ((sinistre.fraudDetection?.confidence ?? 0) <= 0.8)">
+
+        <!-- Colonne ML -->
+        <td class="text-center fraud-status-cell">
+          <div class="fraud-indicator"
+               [style.background-color]="getFraudColor(sinistre.numSinistre)"
+               (click)="showFraudDetails(sinistre)"
+               [title]="'Score ML: ' + ((sinistre.fraudDetection?.fraudScore ?? 0)) + '% - ' + (sinistre.fraudDetection?.reason || 'Aucune analyse')">
+            <i [class]="getFraudIcon(sinistre.numSinistre)" [style.color]="getFraudColor(sinistre.numSinistre)"></i>
+            <div class="fraud-percentage">{{ (sinistre.fraudDetection?.fraudScore ?? 0) }}%</div>
+            <div class="risk-badge" [ngClass]="'risk-' + ((sinistre.fraudDetection?.riskLevel || 'NORMAL').toLowerCase())">
+              {{ sinistre.fraudDetection?.riskLevel || 'NORMAL' }}
+            </div>
+          </div>
+        </td>
+
+        <!-- Données -->
+        <td class="fw-bold">{{ sinistre.numSinistre }}</td>
+        <td>{{ sinistre.anneeExercice }}</td>
+        <td>{{ sinistre.numContrat }}</td>
+        <td>{{ formatDate(sinistre.dateDeclaration) }}</td>
+        <td><span class="badge" [ngClass]="getNatureClass(sinistre.natureSinistre)">{{ sinistre.natureSinistre || '-' }}</span></td>
+        <td>{{ sinistre.typeSinistre || '-' }}</td>
+        <td><span class="badge" [ngClass]="getEtatClass(sinistre.libEtatSinistre)">{{ sinistre.libEtatSinistre || '-' }}</span></td>
+        <td class="text-end fw-bold">{{ formatMontant(sinistre.montantEvaluationBrut) }}</td>
+        <td class="text-end fw-bold">{{ formatMontant(sinistre.totalReglementBrut) }}</td>
+        <td>{{ sinistre.lieuAccident || '-' }}</td>
+        <td>{{ sinistre.gouvernorat || '-' }}</td>
+        <td>{{ sinistre.compagnieAdverse || '-' }}</td>
+
+        <!-- Actions -->
+        <td class="text-center">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-warning" (click)="updateSinistre(sinistre)" title="Modifier">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-outline-danger" (click)="deleteSinistre(sinistre.numSinistre)" title="Supprimer">
+              <i class="fas fa-trash"></i>
+            </button>
+            <button class="btn btn-outline-primary" (click)="voirSinistre(sinistre)" title="Voir détails">
+              <i class="fas fa-eye"></i>
+            </button>
+            <button *ngIf="sinistre.fraudDetection?.isFraud"
+                    class="btn btn-outline-danger"
+                    (click)="showFraudDetails(sinistre)"
+                    title="Détails de la fraude ML">
+              <i class="fas fa-exclamation-triangle"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- =================== AUCUN RÉSULTAT =================== -->
+  <div *ngIf="!loading && sinistres.length === 0" class="text-center my-5">
+    <div class="no-results">
+      <i class="fas fa-search fa-3x text-muted mb-3"></i>
+      <h4 class="text-muted">Aucun sinistre trouvé</h4>
+      <p class="text-muted">Essayez de modifier vos critères de recherche</p>
+      <button class="btn btn-primary" (click)="resetFilters()">
+        <i class="fas fa-refresh"></i> Réinitialiser les filtres
+      </button>
+    </div>
+  </div>
+
+  <!-- =================== PAGINATION =================== -->
+  <div class="pagination-section" *ngIf="totalPages > 1">
+    <nav aria-label="Navigation des pages">
+      <ul class="pagination justify-content-center">
+        <li class="page-item" [class.disabled]="currentPage === 0">
+          <button class="page-link" (click)="onPageChange(currentPage - 1)">
+            <i class="fas fa-chevron-left"></i> Précédent
+          </button>
+        </li>
+        <li *ngFor="let page of getPages()" class="page-item" [class.active]="page === currentPage">
+          <button class="page-link" (click)="onPageChange(page)">{{ page + 1 }}</button>
+        </li>
+        <li class="page-item" [class.disabled]="currentPage >= totalPages - 1">
+          <button class="page-link" (click)="onPageChange(currentPage + 1)">
+            Suivant <i class="fas fa-chevron-right"></i>
+          </button>
+        </li>
+      </ul>
+    </nav>
+    <div class="pagination-info text-center mt-2">
+      Page {{ currentPage + 1 }} sur {{ totalPages }} ({{ totalElements | number }} sinistres)
+    </div>
+  </div>
+
+  <!-- =================== ACTIONS (bas) =================== -->
+  <div class="actions-section mt-3">
+    <div class="row">
+      <div class="col-md-6">
+        <div class="btn-group">
+          <button class="btn btn-success" (click)="actualiserDonnees()">
+            <i class="fas fa-sync-alt"></i> Actualiser
+          </button>
+          <button class="btn btn-info" (click)="exporterDonnees()">
+            <i class="fas fa-download"></i> Exporter CSV
+          </button>
+          <button class="btn btn-warning" (click)="loadFraudStatistics()">
+            <i class="fas fa-chart-bar"></i> Stats ML
+          </button>
+          <button class="btn btn-secondary" (click)="testerConnexionAPI()">
+            <i class="fas fa-plug"></i> Test API
+          </button>
+        </div>
+      </div>
+
+      <!-- ✅ ICI on a supprimé le bouton Notifications. On laisse seulement Reset Filtres -->
+      <div class="col-md-6 text-end">
+        <div class="btn-group">
+          <button class="btn btn-outline-secondary" (click)="resetFilters()">
+            <i class="fas fa-filter"></i> Reset Filtres
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== LÉGENDE =================== -->
+  <div class="legend-section mt-4">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0">
+          <i class="fas fa-info-circle"></i> Légende ML Sinistres - Modèle de Détection Spécialisé
+        </h6>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-3">
+            <div class="legend-item">
+              <i class="fas fa-exclamation-triangle text-danger"></i>
+              <span class="risk-badge risk-critical">CRITICAL</span>
+              <small>Score &gt; 80% - Fraude probable</small>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="legend-item">
+              <i class="fas fa-exclamation-circle text-warning"></i>
+              <span class="risk-badge risk-high">HIGH</span>
+              <small>Score 60-80% - Vérification urgente</small>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="legend-item">
+              <i class="fas fa-info-circle text-info"></i>
+              <span class="risk-badge risk-medium">MEDIUM</span>
+              <small>Score 40-60% - Surveillance</small>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="legend-item">
+              <i class="fas fa-check-circle text-success"></i>
+              <span class="risk-badge risk-normal">NORMAL</span>
+              <small>Score &lt; 40% - Sinistre légitime</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- ✅ Description EXACTE comme sur la capture -->
+        <hr class="my-3">
+        <div class="mt-2">
+          <h6 class="mb-2">Règles ML Spécifiques aux Sinistres :</h6>
+          <ul class="mb-0">
+            <li><strong>Montants suspects</strong> : Évaluations &gt; <strong>50 000 DT</strong></li>
+            <li><strong>Délais anormaux</strong> : Déclaration &gt; <strong>30 jours</strong> après survenance</li>
+            <li><strong>Sinistres corporels</strong> : Montants élevés avec circonstances douteuses</li>
+            <li><strong>Compagnies adverses</strong> : Entités inconnues ou suspectes</li>
+            <li><strong>Règlements anormaux</strong> : Supérieurs aux évaluations initiales</li>
+          </ul>
+        </div>
+        <!-- ✅ Fin description -->
+      </div>
+    </div>
+  </div>
+
+</div>

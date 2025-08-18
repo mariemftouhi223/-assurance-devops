@@ -1,0 +1,431 @@
+<div class="assures-bleed">
+  <div class="sinistres-container">
+
+    <!-- ========== HEADER ========== -->
+    <div class="header-section">
+      <div class="header-title d-flex justify-content-between align-items-center">
+        <h2 class="mb-0">
+          <i class="fas fa-users me-2"></i> Gestion des Assurés
+        </h2>
+        <div class="results-info text-muted">
+          Affichage de <strong>{{ getStartIndex() }}</strong> à <strong>{{ getEndIndex() }}</strong>
+          sur <strong>{{ totalElements | number }}</strong> assurés
+        </div>
+      </div>
+
+      <!-- Boutons en haut -->
+      <div class="header-actions-top d-flex justify-content-end align-items-center gap-2 mt-2">
+        <button
+          class="btn btn-primary notifications-toggle"
+          [class.active]="showNotifications"
+          (click)="showNotifications = !showNotifications">
+          <i class="fas fa-bell"></i> Notifications
+          <span *ngIf="getActiveNotifications().length > 0" class="badge bg-danger ms-1">
+            {{ getActiveNotifications().length }}
+          </span>
+        </button>
+
+        <button class="btn btn-outline-secondary" (click)="resetFilters()">
+          <i class="fas fa-filter"></i> Reset Filtres
+        </button>
+      </div>
+
+      <!-- Cartes stats -->
+      <div class="fraud-stats-cards mt-3" *ngIf="statistiquesAssures">
+        <div class="stat-card stat-total">
+          <div class="stat-icon"><i class="fas fa-list"></i></div>
+          <div class="stat-content">
+            <div class="stat-number">{{ statistiquesAssures.totalAssures | number }}</div>
+            <div class="stat-label">Total Assurés</div>
+          </div>
+        </div>
+
+        <div class="stat-card stat-fraud" [class.alert-danger]="statistiquesAssures.fraudulentCount > 0">
+          <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+          <div class="stat-content">
+            <div class="stat-number">{{ statistiquesAssures.fraudulentCount | number }}</div>
+            <div class="stat-label">Fraudes Détectées</div>
+            <div class="stat-percentage">{{ statistiquesAssures.fraudPercentage }}%</div>
+          </div>
+        </div>
+
+        <div class="stat-card stat-high-risk">
+          <div class="stat-icon"><i class="fas fa-shield-alt"></i></div>
+          <div class="stat-content">
+            <div class="stat-number">{{ statistiquesAssures.highRiskCount | number }}</div>
+            <div class="stat-label">Haut Risque</div>
+          </div>
+        </div>
+
+        <div class="stat-card stat-medium-risk">
+          <div class="stat-icon"><i class="fas fa-info-circle"></i></div>
+          <div class="stat-content">
+            <div class="stat-number">{{ statistiquesAssures.mediumRiskCount | number }}</div>
+            <div class="stat-label">Risque Moyen</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ========== /HEADER ========== -->
+
+    <!-- ========== ALERTES ML ========== -->
+    <div class="fraud-notifications mt-3" *ngIf="showNotifications && getActiveNotifications().length > 0">
+      <div class="notifications-header d-flex justify-content-between align-items-center mb-2">
+        <h4 class="mb-0"><i class="fas fa-bell text-warning"></i> Alertes de Fraude Active</h4>
+        <button class="btn btn-sm btn-outline-secondary" (click)="clearAllNotifications()">
+          <i class="fas fa-times"></i> Tout effacer
+        </button>
+      </div>
+
+      <div class="notifications-list">
+        <div *ngFor="let n of getActiveNotifications()" class="notification-item" [ngClass]="'notification-' + n.type">
+          <div class="notification-content">
+            <div class="notification-title">{{ n.title }}</div>
+            <div class="notification-message">{{ n.message }}</div>
+            <div class="notification-time">{{ n.timestamp | date:'short' }}</div>
+          </div>
+          <div class="notification-actions">
+            <button class="btn btn-sm btn-primary" (click)="showFraudDetailsFromNotification(n.contractId)">Détails</button>
+            <button class="btn btn-sm btn-outline-secondary" (click)="dismissNotification(n.id)">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ========== /ALERTES ML ========== -->
+
+    <!-- ========== FILTRES ========== -->
+    <div class="filters-section mt-3">
+      <div class="row g-2">
+        <div class="col-md-3">
+          <input type="text" class="form-control" placeholder="🔍 Rechercher…" [(ngModel)]="searchText" (keyup.enter)="searchAssures()">
+        </div>
+        <div class="col-md-2">
+          <select class="form-select" [(ngModel)]="fraudFilter" (change)="searchAssures()">
+            <option value="">Tous</option>
+            <option value="fraud">Fraudes</option>
+            <option value="high-risk">Haut risque</option>
+            <option value="medium-risk">Risque moyen</option>
+            <option value="normal">Normaux</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <select class="form-select" [(ngModel)]="pageSize" (change)="onPageSizeChange(pageSize)">
+            <option *ngFor="let sz of pageSizeOptions" [value]="sz">{{ sz }} par page</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-primary w-100" (click)="searchAssures()">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
+        <div class="col-md-3 text-end">
+          <div class="btn-group w-100">
+            <button class="btn btn-success" (click)="createAssure({})">
+              <i class="fas fa-plus-circle"></i> Ajouter
+            </button>
+            <button class="btn btn-outline-secondary" (click)="resetFilters()">
+              <i class="fas fa-filter"></i> Reset
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ========== /FILTRES ========== -->
+
+    <!-- ========== ERREUR / LOADER ========== -->
+    <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show mt-3">
+      <i class="fas fa-exclamation-circle"></i> {{ errorMessage }}
+      <button type="button" class="btn-close" (click)="errorMessage=null"></button>
+    </div>
+
+    <div *ngIf="isLoading" class="text-center my-4">
+      <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Chargement…</span></div>
+      <div class="mt-2">Analyse ML en cours…</div>
+    </div>
+    <!-- ========== /ERREUR / LOADER ========== -->
+
+    <!-- ========== TABLEAU ========== -->
+    <div *ngIf="!isLoading && assures.length > 0" class="assures-table-scroll mt-3">
+      <table class="table table-bordered table-striped table-hover assures-table">
+        <thead class="table-dark">
+        <tr>
+          <th class="text-center sticky-col" style="width:80px">
+            <i class="fas fa-shield-alt text-warning"></i><br><small>Statut ML</small>
+          </th>
+
+          <!-- Identité / contrat -->
+          <th>N° Contrat</th>
+          <th>Année</th>
+          <th>Exercice Prod</th>
+          <th>Exercice</th>
+
+          <!-- Dates contrat -->
+          <th>Effet Contrat</th>
+          <th>Validité Du</th>
+          <th>Validité Au</th>
+          <th>Prochain Terme</th>
+
+          <!-- Intermédiaire & profil -->
+          <th>Code Interm.</th>
+          <th>Date Naiss.</th>
+          <th>Sexe</th>
+          <th>Ville</th>
+          <th>Code Postal</th>
+
+          <!-- Véhicule -->
+          <th>Immatriculation</th>
+          <th>Prem. Mise Circul.</th>
+          <th>Marque</th>
+          <th>Usage</th>
+          <th>Leasing</th>
+          <th>Classe</th>
+
+          <!-- Type de personne -->
+          <th>Personne Phys.</th>
+          <th>Personne Morale</th>
+          <th>N° Quittance</th>
+
+          <!-- Garanties -->
+          <th>RC</th>
+          <th>D&Rec</th>
+          <th>Incendie</th>
+          <th>Vol</th>
+          <th>Dom. Véhicule</th>
+          <th>Dom. & Collision</th>
+          <th>Bris Glaces</th>
+          <th>PTA</th>
+          <th>Individuelle Acc.</th>
+          <th>Cat. Naturelle</th>
+          <th>Émeute</th>
+          <th>Vol Radio</th>
+          <th>Assistance</th>
+          <th>Carglass</th>
+
+          <!-- Financier -->
+          <th>Total Taxes</th>
+          <th>Frais</th>
+          <th class="text-end">Prime Nette</th>
+          <th>Cap. Incendie</th>
+          <th>Cap. Vol</th>
+          <th>Cap. D.V.</th>
+          <th>Valeur Catalogue</th>
+          <th>Valeur Vénale</th>
+
+          <th class="text-center" style="width:160px">Actions</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        <tr *ngFor="let a of assures; trackBy: trackByAssure">
+          <!-- Badge ML -->
+          <td class="text-center sticky-col fraud-status-cell">
+            <div class="fraud-indicator"
+                 [style.background-color]="getFraudColor(a.numContrat)"
+                 (click)="showFraudDetails(a)">
+              <i [class]="getFraudIcon(a.numContrat)" [style.color]="getFraudColor(a.numContrat)"></i>
+              <div class="fraud-percentage">{{ getFraudScore(a.numContrat) }}%</div>
+              <div class="risk-badge" [ngClass]="'risk-' + getRiskLevel(a.numContrat).toLowerCase()">
+                {{ getRiskLevel(a.numContrat) }}
+              </div>
+            </div>
+          </td>
+
+          <!-- Identité / contrat -->
+          <td class="fw-bold">{{ a.numContrat }}</td>
+          <td>{{ a.annee || '-' }}</td>
+          <td>{{ a.anneeExerciceProd || '-' }}</td>
+          <td>{{ a.anneeExercice || '-' }}</td>
+
+          <!-- Dates contrat -->
+          <td>{{ formatDate(a.effetContrat) }}</td>
+          <td>{{ formatDate(a.validiteDu) }}</td>
+          <td>{{ formatDate(a.validiteAu) }}</td>
+          <td>{{ formatDate(a.prochainTerme) }}</td>
+
+          <!-- Intermédiaire & profil -->
+          <td>{{ a.codeIntermediaire || '-' }}</td>
+          <td>{{ formatDate(a.dateNaissance) }}</td>
+          <td>{{ a.sexe || '-' }}</td>
+          <td>{{ a.ville || '-' }}</td>
+          <td>{{ a.codePostal || '-' }}</td>
+
+          <!-- Véhicule -->
+          <td>{{ a.immatriculationVehicule || '-' }}</td>
+          <td>{{ formatDate(a.premiereMiseCirculation) }}</td>
+          <td>{{ a.marqueVehicule || '-' }}</td>
+          <td>{{ a.usage || '-' }}</td>
+          <td>{{ a.leasing || '-' }}</td>
+          <td>{{ a.classeAssure || '-' }}</td>
+
+          <!-- Type de personne -->
+          <td>{{ a.personnePhysique || 0 }}</td>
+          <td>{{ a.personneMorale || 0 }}</td>
+          <td>{{ a.numQuittance || '-' }}</td>
+
+          <!-- Garanties -->
+          <td>{{ fmt(a.rc) }}</td>
+          <td>{{ fmt(a.dRec) }}</td>
+          <td>{{ fmt(a.incendie) }}</td>
+          <td>{{ fmt(a.vol) }}</td>
+          <td>{{ fmt(a.dommagesAuVehicule) }}</td>
+          <td>{{ fmt(a.dommagesEtCollision) }}</td>
+          <td>{{ fmt(a.brisDeGlaces) }}</td>
+          <td>{{ fmt(a.pta) }}</td>
+          <td>{{ fmt(a.individuelleAccident) }}</td>
+          <td>{{ fmt(a.catastropheNaturelle) }}</td>
+          <td>{{ fmt(a.emeuteMouvementPopulaire) }}</td>
+          <td>{{ fmt(a.volRadioCassette) }}</td>
+          <td>{{ fmt(a.assistanceEtCarglass) }}</td>
+          <td>{{ fmt(a.carglass) }}</td>
+
+          <!-- Financier -->
+          <td>{{ money(a.totalTaxe) }}</td>
+          <td>{{ money(a.frais) }}</td>
+          <td class="text-end fw-bold">{{ money(a.totalPrimeNette) }}</td>
+          <td>{{ money(a.capitaleInc) }}</td>
+          <td>{{ money(a.capitaleVol) }}</td>
+          <td>{{ money(a.capitaleDv) }}</td>
+          <td>{{ money(a.valeurCatalogue) }}</td>
+          <td>{{ money(a.valeurVenale) }}</td>
+
+          <!-- Actions -->
+          <td class="text-center">
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-warning" (click)="updateAssure(a)" title="Modifier">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="btn btn-outline-danger" (click)="deleteAssure(a.numContrat)" title="Supprimer">
+                <i class="fas fa-trash"></i>
+              </button>
+              <button class="btn btn-outline-primary" (click)="showContractDetails(a)" title="Détails">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- AUCUN RÉSULTAT -->
+    <div *ngIf="!isLoading && assures.length === 0" class="text-center my-5">
+      <div class="no-results">
+        <i class="fas fa-search fa-3x text-muted mb-3"></i>
+        <h4 class="text-muted">Aucun assuré trouvé</h4>
+        <p class="text-muted">Essayez de modifier vos critères</p>
+        <button class="btn btn-primary" (click)="resetFilters()"><i class="fas fa-rotate"></i> Réinitialiser</button>
+      </div>
+    </div>
+    <!-- ========== /TABLEAU ========== -->
+
+    <!-- ========== PAGINATION ========== -->
+    <div class="pagination-section mt-3" *ngIf="totalPages > 1">
+      <nav aria-label="Navigation des pages">
+        <ul class="pagination justify-content-center">
+          <li class="page-item" [class.disabled]="currentPage === 0">
+            <button class="page-link" (click)="onPageChange(currentPage - 1)">
+              <i class="fas fa-chevron-left"></i> Précédent
+            </button>
+          </li>
+          <li *ngFor="let page of getPages()" class="page-item" [class.active]="page === currentPage">
+            <button class="page-link" (click)="onPageChange(page)">{{ page + 1 }}</button>
+          </li>
+          <li class="page-item" [class.disabled]="currentPage >= totalPages - 1">
+            <button class="page-link" (click)="onPageChange(currentPage + 1)">
+              Suivant <i class="fas fa-chevron-right"></i>
+            </button>
+          </li>
+        </ul>
+      </nav>
+      <div class="pagination-info text-center mt-2">
+        Page {{ currentPage + 1 }} sur {{ totalPages }} ({{ totalElements | number }} assurés)
+      </div>
+    </div>
+    <!-- ========== /PAGINATION ========== -->
+
+    <!-- ========== ACTIONS BAS DE PAGE ========== -->
+    <div class="actions-section mt-3">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="btn-group">
+            <button class="btn btn-success" (click)="loadAssures()"><i class="fas fa-sync-alt"></i> Actualiser</button>
+            <button class="btn btn-info" (click)="exportAssures()"><i class="fas fa-download"></i> Exporter CSV</button>
+            <button class="btn btn-warning" (click)="loadFraudStatistics()"><i class="fas fa-chart-bar"></i> Stats ML</button>
+            <button class="btn btn-secondary" (click)="testApi()"><i class="fas fa-plug"></i> Test API</button>
+          </div>
+        </div>
+        <div class="col-md-6 text-end">
+          <button class="btn btn-outline-secondary" (click)="resetFilters()"><i class="fas fa-filter"></i> Reset Filtres</button>
+        </div>
+      </div>
+    </div>
+    <!-- ========== /ACTIONS BAS DE PAGE ========== -->
+
+    <!-- ========== LÉGENDE ML ========== -->
+    <section class="ml-legend card mt-4">
+      <div class="card-body">
+        <h5 class="card-title mb-3">
+          <i class="fas fa-info-circle me-2"></i>
+          Légende ML Assurés – Modèle de Détection Spécialisé
+        </h5>
+
+        <div class="row gy-3 risk-badges">
+          <div class="col-md-3">
+            <span class="chip chip-critical"><i class="fas fa-exclamation-triangle me-1"></i> CRITICAL</span>
+            <span class="text-muted ms-2">Score &gt; 80% – Fraude probable</span>
+          </div>
+          <div class="col-md-3">
+            <span class="chip chip-high"><i class="fas fa-exclamation-circle me-1"></i> HIGH</span>
+            <span class="text-muted ms-2">Score 60–80% – Vérification urgente</span>
+          </div>
+          <div class="col-md-3">
+            <span class="chip chip-medium"><i class="fas fa-info-circle me-1"></i> MEDIUM</span>
+            <span class="text-muted ms-2">Score 40–60% – Surveillance</span>
+          </div>
+          <div class="col-md-3">
+            <span class="chip chip-normal"><i class="fas fa-check me-1"></i> NORMAL</span>
+            <span class="text-muted ms-2">Score &lt; 40% – Contrat légitime</span>
+          </div>
+        </div>
+
+        <hr class="my-4" />
+
+        <h6 class="mb-2"><i class="fas fa-scale-balanced me-2"></i>Règles ML Spécifiques aux Assurés :</h6>
+        <ul class="mb-4 text-muted">
+          <li><strong>Primes disproportionnées</strong> : Frais disproportionnés par rapport à la prime</li>
+          <li><strong>Garanties nombreuses</strong> : Trop de garanties pour un véhicule de faible valeur</li>
+          <li><strong>Contrats corporels</strong> : Montants élevés avec circonstances douteuses</li>
+          <li><strong>Historique suspect</strong> : Patterns anormaux dans les données contractuelles</li>
+          <li><strong>Valeurs incohérentes</strong> : Écarts importants entre valeur catalogue et vénale</li>
+        </ul>
+
+        <div class="row g-3">
+          <div class="col-lg-6">
+            <div class="actions-box">
+              <h6 class="mb-2 text-danger">🔎 Actions Recommandées — <span class="fw-bold">CRITICAL/HIGH</span> :</h6>
+              <ul class="mb-0">
+                <li>Enquête immédiate</li>
+                <li>Suspension temporaire</li>
+                <li>Vérification des documents</li>
+              </ul>
+            </div>
+          </div>
+          <div class="col-lg-6">
+            <div class="actions-box">
+              <h6 class="mb-2 text-primary">🛡️ <span class="fw-bold">MEDIUM</span> :</h6>
+              <ul class="mb-0">
+                <li>Surveillance renforcée</li>
+                <li>Contrôles périodiques</li>
+                <li>Validation manuelle</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ========== /LÉGENDE ML ========== -->
+
+  </div>
+</div>

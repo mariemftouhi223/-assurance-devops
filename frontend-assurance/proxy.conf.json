@@ -1,0 +1,29 @@
+{
+  "/auth": {
+    "target": "http://localhost:9090",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/auth": ""
+    }
+  },
+  "/api": {
+    "target": "http://localhost:9099",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/metabase": {
+    "target": "http://localhost:3000",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/metabase": ""
+    },
+    "headers": {
+      "Content-Security-Policy": "default-src * 'unsafe-inline' 'unsafe-eval'; font-src * data:; img-src * data:; frame-ancestors 'self'",
+      "X-Frame-Options": "SAMEORIGIN"
+    }
+  }
+}
+

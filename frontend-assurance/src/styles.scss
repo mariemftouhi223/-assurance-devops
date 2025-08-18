@@ -1,0 +1,190 @@
+/* Centrage */
+.gestion-assures-container, .sinistres-container {
+  max-width: 95% !important;
+  margin: 0 auto !important;
+  padding: 20px !important;
+}
+
+/* Design unifié */
+.card {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+}
+
+.table thead th {
+  background: #343a40 !important;
+  color: white !important;
+}
+
+/* ============ IMPORTS ============ */
+@import "bootstrap/dist/css/bootstrap.min.css";
+@import "@fortawesome/fontawesome-free/css/all.min.css";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lato:wght@400;700&display=swap');
+
+/* ============ VARIABLES GLOBALES ============ */
+:root {
+  --primary-blue: #1e3a8a;
+  --primary-blue-light: #3b82f6;
+  --primary-blue-dark: #1e40af;
+  --primary-blue-hover: #1d4ed8;
+
+  --text-primary: #2d3748;
+  --text-secondary: #4a5568;
+
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+
+  --sidebar-width: 230px;
+}
+
+/* ============ RESET GLOBAL ============ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ============ STYLES DE BASE ============ */
+body {
+  font-family: 'Lato', 'Inter', sans-serif;
+  color: var(--text-primary);
+  background-color: #f8f9fa;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* ============ CORRECTION GLOBALE POUR SIDEBAR ============ */
+/* ❌ Avant : margin-left:230px sur chaque composant → vide à gauche */
+/* ✅ Maintenant : pas de margin-left ici */
+app-gestion-assures,
+app-dashboard,
+app-users,
+app-insurance-contracts,
+app-claims,
+app-fraud-detection,
+app-fraud-investigations,
+app-statistics {
+  display: block;
+  margin-left: 0 !important;   /* ✅ corrigé */
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Correction spécifique pour le composant gestion-assures */
+app-gestion-assures .gestion-assures-container,
+.gestion-assures-container {
+  margin-left: 0 !important;
+  width: 100%;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* ============ CORRECTION POUR ROUTER-OUTLET ============ */
+router-outlet {
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+
+router-outlet + * {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* ============ CLASSES UTILITAIRES ============ */
+.login-container {
+  width: 800px !important;
+  margin-top: 15%;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+/* ============ CORRECTION POUR LA TOPBAR STICKY ============ */
+.topbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 100 !important;
+  background: white !important;
+  border-bottom: 1px solid #dee2e6 !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+/* ============ CORRECTION POUR LE CONTENU PRINCIPAL ============ */
+/* ✅ un seul offset : la sidebar pousse tout le contenu via .main-content-area */
+.main-content-area {
+  margin-left: var(--sidebar-width) !important;  /* ✅ unique décalage */
+  min-height: 100vh;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+.page-content {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* ============ OVERRIDES BOOTSTRAP ============ */
+.btn-primary {
+  background-color: var(--primary-blue);
+  border-color: var(--primary-blue-dark);
+
+  &:hover {
+    background-color: var(--primary-blue-hover);
+    border-color: var(--primary-blue-dark);
+  }
+}
+
+/* ============ CORRECTION POUR LES MARGES AUTOMATIQUES ============ */
+.mt-5, .my-5 {
+  margin-top: 0 !important;
+}
+
+.pt-5, .py-5 {
+  padding-top: 0 !important;
+}
+
+h1, h2, h3, h4, h5, h6 { margin-top: 0; }
+p { margin-top: 0; }
+
+/* ============ SCROLLBAR PERSONNALISÉE ============ */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb {
+  background: var(--primary-blue-light);
+  border-radius: 4px;
+  &:hover { background: var(--primary-blue); }
+}
+
+/* ============ MEDIA QUERIES ============ */
+@media (max-width: 1024px) {
+  .main-content-area { margin-left: 0 !important; padding-top: 60px; }
+}
+
+@media (max-width: 992px) {
+  .login-container { width: 90% !important; margin-top: 20%; }
+}
+
+@media (max-width: 768px) {
+  .login-container { margin-top: 25%; }
+  .sidebar {
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s ease;
+  }
+  .sidebar.show { transform: translateX(0) !important; }
+}

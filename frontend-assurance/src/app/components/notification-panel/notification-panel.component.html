@@ -1,0 +1,237 @@
+<!-- Icône de notification dans la barre de navigation -->
+<div class="notification-trigger" (click)="toggleNotificationPanel()">
+  <i class="fas fa-bell fs-5 text-secondary position-relative"
+     [class.text-danger]="unreadCount > 0"
+     title="Notifications">
+    <!-- Badge de compteur -->
+    <span *ngIf="unreadCount > 0"
+          class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+      {{ unreadCount > 99 ? '99+' : unreadCount }}
+    </span>
+  </i>
+
+  <!-- Indicateur de connexion -->
+  <span class="connection-indicator ms-1"
+        [class.connected]="isConnected"
+        [class.disconnected]="!isConnected"
+        [title]="getConnectionStatusText()">
+    <i class="fas fa-circle" style="font-size: 8px;"></i>
+  </span>
+</div>
+
+<!-- Panneau de notifications -->
+<div class="notification-panel"
+     [class.show]="showNotificationPanel"
+     *ngIf="showNotificationPanel">
+
+  <!-- En-tête du panneau -->
+  <div class="notification-header">
+    <div class="d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">
+        <i class="fas fa-bell me-2"></i>
+        Notifications
+        <span class="badge bg-primary ms-2">{{ notifications.length }}</span>
+      </h5>
+      <button class="btn btn-sm btn-outline-secondary" (click)="closeNotificationPanel()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Statut de connexion -->
+    <div class="connection-status mt-2">
+      <small class="text-muted">
+        <i class="fas fa-circle me-1"
+           [class.text-success]="isConnected"
+           [class.text-danger]="!isConnected"></i>
+        {{ getConnectionStatusText() }}
+        <button *ngIf="!isConnected"
+                class="btn btn-sm btn-link p-0 ms-2"
+                (click)="reconnect()">
+          Reconnecter
+        </button>
+      </small>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <div class="notification-filters p-3 border-bottom">
+    <div class="row g-2">
+      <div class="col-6">
+        <select class="form-select form-select-sm" [(ngModel)]="selectedFilter">
+          <option value="all">Toutes priorités</option>
+          <option value="critical">Critique</option>
+          <option value="high">Élevée</option>
+          <option value="medium">Moyenne</option>
+          <option value="low">Faible</option>
+        </select>
+      </div>
+      <div class="col-6">
+        <select class="form-select form-select-sm" [(ngModel)]="selectedType">
+          <option value="all">Tous types</option>
+          <option value="fraud_alert">Alertes fraude</option>
+          <option value="status_update">Mises à jour</option>
+          <option value="statistics">Statistiques</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Actions rapides -->
+    <div class="mt-2">
+      <button class="btn btn-sm btn-outline-primary me-2" (click)="markAllAsRead()">
+        <i class="fas fa-check-double me-1"></i>
+        Tout marquer lu
+      </button>
+      <button class="btn btn-sm btn-outline-danger" (click)="clearAllNotifications()">
+        <i class="fas fa-trash me-1"></i>
+        Tout supprimer
+      </button>
+    </div>
+  </div>
+
+  <!-- Alertes critiques en haut -->
+  <div *ngIf="getCriticalAlerts().length > 0" class="critical-alerts-section">
+    <div class="alert alert-danger m-3 mb-2">
+      <h6 class="alert-heading">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        Alertes Critiques ({{ getCriticalAlerts().length }})
+      </h6>
+      <div class="critical-alerts-list">
+        <div *ngFor="let alert of getCriticalAlerts()"
+             class="critical-alert-item mb-2 p-2 bg-light rounded"
+             (click)="viewAlertDetails(alert)">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <strong>{{ alert.contractId }}</strong>
+              <br>
+              <small>{{ alert.clientName }}</small>
+              <br>
+              <span class="badge bg-danger">{{ (alert.fraudProbability * 100).toFixed(1) }}%</span>
+            </div>
+            <small class="text-muted">{{ formatNotificationDate(alert.timestamp) }}</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Liste des notifications -->
+  <div class="notification-list">
+    <div *ngIf="getFilteredNotifications().length === 0" class="text-center p-4 text-muted">
+      <i class="fas fa-inbox fa-2x mb-2"></i>
+      <p>Aucune notification</p>
+    </div>
+
+    <div *ngFor="let notification of getFilteredNotifications(); trackBy: trackByNotification"
+         [class]="getNotificationClass(notification)"
+         (click)="navigateToAlert(notification)">
+
+      <div class="notification-content">
+        <!-- Icône et priorité -->
+        <div class="notification-icon">
+          <i [class]="getNotificationIcon(notification)"
+             [class.text-danger]="notification.priority === 'CRITICAL'"
+             [class.text-warning]="notification.priority === 'HIGH'"
+             [class.text-info]="notification.priority === 'MEDIUM'"
+             [class.text-secondary]="notification.priority === 'LOW'"></i>
+        </div>
+
+        <!-- Contenu principal -->
+        <div class="notification-body flex-grow-1">
+          <div class="notification-title">
+            {{ notification.title }}
+            <span class="badge ms-2"
+                  [class.bg-danger]="notification.priority === 'CRITICAL'"
+                  [class.bg-warning]="notification.priority === 'HIGH'"
+                  [class.bg-info]="notification.priority === 'MEDIUM'"
+                  [class.bg-secondary]="notification.priority === 'LOW'">
+              {{ getPriorityText(notification.priority) }}
+            </span>
+          </div>
+
+          <div class="notification-message">
+            {{ notification.message }}
+          </div>
+
+          <div class="notification-meta">
+            <small class="text-muted">
+              <i class="fas fa-clock me-1"></i>
+              {{ formatNotificationDate(notification.timestamp) }}
+              <span class="ms-2">
+                <i class="fas fa-tag me-1"></i>
+                {{ getTypeText(notification.type) }}
+              </span>
+            </small>
+          </div>
+
+          <!-- Données supplémentaires pour les alertes de fraude -->
+          <div *ngIf="notification.type === 'FRAUD_ALERT' && notification.data"
+               class="notification-details mt-2">
+            <div class="row g-1">
+              <div class="col-6">
+                <small><strong>Contrat:</strong> {{ notification.data.contractId }}</small>
+              </div>
+              <div class="col-6">
+                <small><strong>Client:</strong> {{ notification.data.clientName }}</small>
+              </div>
+              <div class="col-6">
+                <small><strong>Probabilité:</strong> {{ (notification.data.fraudProbability * 100).toFixed(1) }}%</small>
+              </div>
+              <div class="col-6">
+                <small><strong>Risque:</strong> {{ notification.data.riskLevel }}</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="notification-actions">
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                    type="button"
+                    data-bs-toggle="dropdown">
+              <i class="fas fa-ellipsis-v"></i>
+            </button>
+            <ul class="dropdown-menu">
+              <li>
+                <a class="dropdown-item" href="#" (click)="markAsRead(notification); $event.preventDefault()">
+                  <i class="fas fa-check me-2"></i>
+                  Marquer comme lu
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="#" (click)="removeNotification(notification); $event.preventDefault()">
+                  <i class="fas fa-trash me-2"></i>
+                  Supprimer
+                </a>
+              </li>
+              <li *ngIf="notification.actionUrl">
+                <hr class="dropdown-divider">
+              </li>
+              <li *ngIf="notification.actionUrl">
+                <a class="dropdown-item" href="#" (click)="navigateToAlert(notification); $event.preventDefault()">
+                  <i class="fas fa-external-link-alt me-2"></i>
+                  Voir détails
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pied du panneau -->
+  <div class="notification-footer">
+    <div class="text-center p-2">
+      <button class="btn btn-sm btn-primary" routerLink="/books/fraud-alerts">
+        <i class="fas fa-list me-1"></i>
+        Voir toutes les alertes
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay pour fermer le panneau -->
+<div class="notification-overlay"
+     *ngIf="showNotificationPanel"
+     (click)="closeNotificationPanel()"></div>
