@@ -9,14 +9,18 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: assurance
-      MYSQL_USER: app
-      MYSQL_PASSWORD: app
     ports:
-      - "3306:3306"   # si 3306 est déjà pris sur ta machine, remplace par "3307:3306"
+      - "3306:3306"   # si déjà pris, remplace par "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -proot || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
 
   backend:
+    image: assurance-backend:latest
     build:
       context: ./backend-assurance
       dockerfile: Dockerfile
@@ -26,14 +30,14 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      # (si tu utilises la validation OIDC côté backend, ajoute:)
-      # KEYCLOAK_ISSUER_URI: http://localhost:9090/realms/assurance
     ports:
       - "9099:8080"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   frontend:
+    image: assurance-frontend:latest
     build:
       context: ./frontend-assurance
       dockerfile: Dockerfile

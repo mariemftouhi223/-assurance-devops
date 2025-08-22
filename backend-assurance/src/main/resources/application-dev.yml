@@ -28,9 +28,14 @@ spring:
           batch_size: 20
         order_inserts: true
         order_updates: true
+
     database: mysql
     # Afficher les statistiques Hibernate
     generate-ddl: true
+    jackson:
+      time-zone: Africa/Tunis
+      date-format: yyyy-MM-dd HH:mm:ss
+
   security:
     oauth2:
       resourceserver:
@@ -109,3 +114,5 @@ management:
 websocket:
   notification:
     endpoint: /ws/notifications
+
+

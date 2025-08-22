@@ -25,10 +25,10 @@ export interface SinistreAvecML {
   typeSinistre: string;
   libEtatSinistre: string;
 
-  montantEvaluation: string;       // formaté
-  montantEvaluationBrut: number;   // numérique
-  totalReglement: string;          // formaté
-  totalReglementBrut: number;      // numérique
+  montantEvaluation: string;
+  montantEvaluationBrut: number;
+  totalReglement: string;
+  totalReglementBrut: number;
 
   lieuAccident: string;
   gouvernorat: string;
@@ -103,6 +103,7 @@ export class SinistresComponent implements OnInit, OnDestroy {
   fraudFilter = '';
 
   /* ===== ML / Notifications ===== */
+  private seenNotifications = new Set<string>();      // anti-doublons
   fraudResults: Map<string, FraudDetection> = new Map();
   fraudNotifications: FraudNotification[] = [];
   showNotifications = true;
@@ -120,8 +121,13 @@ export class SinistresComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
 
-  /** ✅ API via proxy /auth → 9090 (n’impacte pas /api → 9099) */
-  private readonly API = '/auth/api/v1/sinistres';
+  /** ✅ API Spring via proxy → 9099 (Angular proxy) */
+  private readonly API = '/api/v1/sinistres';
+  // Si pas de proxy, mets: private readonly API = 'http://localhost:9099/api/v1/sinistres';
+
+  /** ====== Champs AJOUT (pour le petit formulaire inline) ====== */
+  showAddForm = false;
+  newSinistre: Partial<SinistreAvecML> = this.defaultDraftForForm();
 
   constructor(
     private cdr: ChangeDetectorRef,
@@ -146,8 +152,14 @@ export class SinistresComponent implements OnInit, OnDestroy {
     this.loading = true; this.error = null;
     const payload = this.toApiPayload(draft ?? this.defaultDraft());
 
+    if (!payload.numSinistre || !String(payload.numSinistre).trim()) {
+      this.error = 'numSinistre requis';
+      this.loading = false;
+      return;
+    }
+
     try {
-      await firstValueFrom(this.http.post(`${this.API}/add`, payload, { withCredentials: true }));
+      await firstValueFrom(this.http.post(`${this.API}/add`, payload));
       await this.loadSinistres();
       alert(`Sinistre ${payload.numSinistre} créé avec succès`);
     } catch (e) {
@@ -164,7 +176,7 @@ export class SinistresComponent implements OnInit, OnDestroy {
 
     try {
       await firstValueFrom(
-        this.http.put(`${this.API}/update/${encodeURIComponent(String(s.numSinistre))}`, payload, { withCredentials: true })
+        this.http.put(`${this.API}/update/${encodeURIComponent(String(s.numSinistre))}`, payload)
       );
       await this.loadSinistres();
       alert(`Sinistre ${s.numSinistre} modifié`);
@@ -182,7 +194,7 @@ export class SinistresComponent implements OnInit, OnDestroy {
     this.loading = true; this.error = null;
     try {
       await firstValueFrom(
-        this.http.delete(`${this.API}/delete/${encodeURIComponent(String(numSinistre))}`, { withCredentials: true })
+        this.http.delete(`${this.API}/delete/${encodeURIComponent(String(numSinistre))}`)
       );
       this.sinistres = this.sinistres.filter(x => x.numSinistre !== numSinistre);
       this.totalElements = Math.max(0, this.totalElements - 1);
@@ -215,7 +227,7 @@ export class SinistresComponent implements OnInit, OnDestroy {
       if (this.fraudFilter)     params = params.set('fraud', this.fraudFilter);
 
       const page = await firstValueFrom(
-        this.http.get<ApiResponseML>(this.API, { params, withCredentials: true })
+        this.http.get<ApiResponseML>(this.API, { params })
       );
 
       this.sinistres = (page.content ?? []).map(x => ({ ...x }));
@@ -225,8 +237,7 @@ export class SinistresComponent implements OnInit, OnDestroy {
       this.processFraudResults();
       this.updateStatistiques();
 
-    } catch (e) {
-      // ✅ Fallback mock pour garder l’écran fonctionnel
+    } catch {
       await this.simulateApiCall();
     } finally {
       this.loading = false;
@@ -247,7 +258,7 @@ export class SinistresComponent implements OnInit, OnDestroy {
         this.processFraudResults();
         this.updateStatistiques();
         resolve();
-      }, 400);
+      }, 300);
     });
   }
 
@@ -301,21 +312,26 @@ export class SinistresComponent implements OnInit, OnDestroy {
     this.sinistres.forEach(s => {
       const r = s.fraudDetection;
       this.fraudResults.set(s.numSinistre, r);
-      if (r?.isFraud) fraudulentCount++;
-      if (r?.confidence > 0.6) high++;
-      else if (r?.confidence > 0.4) medium++;
 
       if (r?.isFraud) {
-        this.fraudNotifications.unshift({
-          id: `fraud-${s.numSinistre}-${Date.now()}`,
-          type: r.confidence > 0.8 ? 'fraud' : 'warning',
-          title: '🚨 ALERTE FRAUDE DÉTECTÉE',
-          message: `Sinistre N°${s.numSinistre} - Score: ${r.fraudScore}% - ${r.reason}`,
-          sinistreId: s.numSinistre,
-          timestamp: new Date(),
-          dismissed: false
-        });
+        fraudulentCount++;
+        const key = `${s.numSinistre}:${r.fraudScore}:${r.riskLevel}`;
+        if (!this.seenNotifications.has(key)) {
+          this.seenNotifications.add(key);
+          this.fraudNotifications.unshift({
+            id: `fraud-${s.numSinistre}-${Date.now()}`,
+            type: r.confidence > 0.8 ? 'fraud' : 'warning',
+            title: '🚨 ALERTE FRAUDE DÉTECTÉE',
+            message: `Sinistre N°${s.numSinistre} - Score: ${r.fraudScore}% - ${r.reason}`,
+            sinistreId: s.numSinistre,
+            timestamp: new Date(),
+            dismissed: false
+          });
+        }
       }
+
+      if (r?.confidence > 0.6) high++;
+      else if (r?.confidence > 0.4) medium++;
     });
 
     if (this.fraudNotifications.length > 10) {
@@ -346,7 +362,6 @@ export class SinistresComponent implements OnInit, OnDestroy {
     this.statistiques.averageFraudAmount = fraudCount ? totalFraudAmount / fraudCount : 0;
   }
 
-  /** ✅ Recalcule les stats ML (bouton "Stats ML" + ngOnInit) */
   loadFraudStatistics(): void {
     this.updateStatistiques();
     this.cdr.markForCheck();
@@ -399,11 +414,10 @@ export class SinistresComponent implements OnInit, OnDestroy {
   }
 
   closeError(): void { this.error = null; }
-
   actualiserDonnees(): void { this.loadSinistres(); }
 
   testerConnexionAPI(): void {
-    this.http.get(`${this.API}/health`, { withCredentials: true }).subscribe({
+    this.http.get(`${this.API}/health`).subscribe({
       next: () => alert('API OK'),
       error: () => alert('API KO')
     });
@@ -486,13 +500,6 @@ export class SinistresComponent implements OnInit, OnDestroy {
   getStartIndex(): number { return this.totalElements === 0 ? 0 : this.currentPage * this.pageSize + 1; }
   getEndIndex(): number { const end = (this.currentPage + 1) * this.pageSize; return end > this.totalElements ? this.totalElements : end; }
 
-  getPrioriteClass(priorite: string): string {
-    if (!priorite) return 'priorite-normale';
-    if (priorite.includes('HAUTE')) return 'priorite-haute';
-    if (priorite.includes('MOYENNE')) return 'priorite-moyenne';
-    return 'priorite-normale';
-  }
-
   getEtatClass(etat: string): string {
     switch (etat?.toUpperCase()) {
       case 'CLOTURE': return 'badge bg-success';
@@ -502,7 +509,6 @@ export class SinistresComponent implements OnInit, OnDestroy {
       default: return 'badge bg-secondary';
     }
   }
-
   getNatureClass(nature: string): string {
     switch (nature?.toUpperCase()) {
       case 'CORPOREL': return 'badge bg-danger';
@@ -517,21 +523,47 @@ export class SinistresComponent implements OnInit, OnDestroy {
     return new Intl.NumberFormat('fr-TN', { style: 'currency', currency: 'TND', minimumFractionDigits: 2 })
       .format(v).replace('TND', 'DT');
   }
-
   formatDate(d: any): string {
     if (!d) return 'Non défini';
     const date = new Date(d);
     return isNaN(date.getTime()) ? 'Non défini' : date.toLocaleDateString('fr-FR');
   }
-
-  formatNombre(n: number | null): string {
-    if (n === null || n === undefined) return '0';
-    return new Intl.NumberFormat('fr-FR').format(n);
-  }
-
   trackBySinistre(_: number, s: SinistreAvecML): string { return s.numSinistre; }
   getFraudIcon(n: string): string { return this.fraudResults.get(n)?.alertIcon || 'fas fa-check-circle'; }
   getFraudColor(n: string): string { return this.fraudResults.get(n)?.alertColor || '#6b7280'; }
+
+  // ====== AJOUT : méthodes attendues par le HTML ======
+  onClickAjouter(): void {
+    this.showAddForm = true;
+    this.newSinistre = this.defaultDraftForForm();
+  }
+
+  submitAddForm(): void {
+    if (!this.newSinistre?.numSinistre || !String(this.newSinistre.numSinistre).trim()) {
+      this.error = 'Le N° de sinistre est obligatoire.'; return;
+    }
+    const payload: Partial<SinistreAvecML> = {
+      ...this.newSinistre,
+      dateDeclaration: this.toIso(this.newSinistre.dateDeclaration as any)
+    };
+    this.createSinistre(payload).then(() => {
+      this.showAddForm = false;
+      this.newSinistre = this.defaultDraftForForm();
+    });
+  }
+
+  cancelAddForm(): void {
+    this.showAddForm = false;
+    this.newSinistre = this.defaultDraftForForm();
+    this.error = null;
+  }
+
+  genererNumero(): void {
+    const now = new Date();
+    const y = now.getFullYear();
+    const rnd = Math.floor(100000 + Math.random() * 899999);
+    this.newSinistre.numSinistre = `SIN${y}${rnd}`;
+  }
 
   // ====== Helpers CRUD (dates & payload) ======
   private defaultDraft(): Partial<SinistreAvecML> {
@@ -559,16 +591,31 @@ export class SinistresComponent implements OnInit, OnDestroy {
     };
   }
 
+  /** Brouillon adapté au formulaire (date en yyyy-MM-dd attendu par <input type="date">) */
+  private defaultDraftForForm(): Partial<SinistreAvecML> {
+    const today = this.toIso(new Date())!;
+    return {
+      ...this.defaultDraft(),
+      dateDeclaration: today
+    };
+  }
+
   private toIso(d?: string | Date): string | undefined {
     if (!d) return undefined;
     const dd = d instanceof Date ? d : new Date(d);
     if (isNaN(dd.getTime())) return undefined;
-    return dd.toISOString().substring(0, 10); // yyyy-MM-dd
+    // version locale (pas de décalage UTC)
+    const y = dd.getFullYear();
+    const m = (dd.getMonth() + 1).toString().padStart(2, '0');
+    const day = dd.getDate().toString().padStart(2, '0');
+    return `${y}-${m}-${day}`;
   }
 
   private toApiPayload(s: Partial<SinistreAvecML>): any {
     return {
-      numSinistre: s.numSinistre ? String(s.numSinistre) : '',
+      numSinistre: (s.numSinistre !== undefined && s.numSinistre !== null)
+        ? String(s.numSinistre).trim()
+        : undefined,
       anneeExercice: s.anneeExercice ?? undefined,
       numContrat: s.numContrat ?? undefined,
       dateDeclaration: this.toIso(s.dateDeclaration as any),

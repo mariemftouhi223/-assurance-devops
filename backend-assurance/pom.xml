@@ -85,7 +85,11 @@
 			<version>${mysql.version}</version>
 			<scope>runtime</scope>
 		</dependency>
-
+		<dependency>
+			<groupId>com.microsoft.sqlserver</groupId>
+			<artifactId>mssql-jdbc</artifactId>
+			<scope>runtime</scope>
+		</dependency>
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
@@ -239,8 +243,42 @@
 					</execution>
 				</executions>
 			</plugin>
+
+			<plugin>
+				<groupId>com.google.cloud.tools</groupId>
+				<artifactId>jib-maven-plugin</artifactId>
+				<version>3.4.0</version>
+				<configuration>
+					<from>
+						<image>openjdk:21-slim</image> <!-- IMPORTANT: Doit correspondre à votre version de Java (21) -->
+					</from>
+					<to>
+						<image>assurance-backend:latest</image> <!-- Le nom de votre image Docker -->
+					</to>
+					<container>
+						<ports>
+							<port>9099</port> <!-- Expose le port de votre application -->
+						</ports>
+					</container>
+				</configuration>
+			</plugin>
+
+
 		</plugins>
 	</build>
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	<!-- Gestion explicite des versions pour éviter les conflits -->
 	<dependencyManagement>

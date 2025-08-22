@@ -692,4 +692,127 @@ public class SinistreController {
         }
         return ResponseEntity.notFound().build();
     }
+
+
+
+    @PostMapping("/add")
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<?> createSinistre(@RequestBody Map<String, Object> payload) {
+        try {
+            // 1) Champs obligatoires
+            String numSinistre = str(payload.get("numSinistre"));
+            if (numSinistre == null || numSinistre.isBlank()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "numSinistre requis"));
+            }
+
+            // 2) Construire l'entité
+            Sinistre s = new Sinistre();
+            s.setNumSinistre(numSinistre);
+
+            // --- Identifiants / numéros ---
+            s.setNumContrat(str(payload.get("numContrat")));
+            s.setAnneeExercice(intOrNull(payload.get("anneeExercice")));
+
+            // --- Dates (types selon l'entité) ---
+            // effetContrat: java.util.Date
+            s.setEffetContrat(dateOrNull(payload.get("effetContrat")));
+            // dateExpiration / prochainTerme: String dans l'entité
+            s.setDateExpiration(str(payload.get("dateExpiration")));
+            s.setProchainTerme(str(payload.get("prochainTerme")));
+            // Dates sinistre (java.util.Date)
+            s.setDateDeclaration(dateOrNull(payload.get("dateDeclaration")));
+            s.setDateOuverture(dateOrNull(payload.get("dateOuverture")));
+            s.setDateSurvenance(dateOrNull(payload.get("dateSurvenance")));
+
+            // --- Caractéristiques ---
+            s.setUsage(str(payload.get("usage")));
+            s.setCodeIntermediaire(intOrNull(payload.get("codeIntermediaire")));
+            s.setNatureSinistre(str(payload.get("natureSinistre")));
+            s.setLieuAccident(str(payload.get("lieuAccident")));
+            s.setTypeSinistre(str(payload.get("typeSinistre")));
+            s.setCompagnieAdverse(str(payload.get("compagnieAdverse")));
+            s.setCodeResponsabilite(intOrNull(payload.get("codeResponsabilite")));
+            s.setLibEtatSinistre(str(payload.get("libEtatSinistre")));
+            s.setEtatSinAnnee(str(payload.get("etatSinAnnee")));
+            s.setGouvernorat(str(payload.get("gouvernorat")));
+            s.setNombreBlesses(intOrNull(payload.get("nombreBlesses")));
+            s.setNombreDeces(intOrNull(payload.get("nombreDeces")));
+            s.setTypeUsage(str(payload.get("typeUsage")));
+
+            // --- Montants / provisions ---
+            s.setMontantEvaluation(dblOrNull(payload.get("montantEvaluation")));
+            s.setTotalReglement(dblOrNull(payload.get("totalReglement")));
+            s.setReglementRc(dblOrNull(payload.get("reglementRc")));
+            s.setReglementDefenseEtRecours(dblOrNull(payload.get("reglementDefenseEtRecours")));
+            s.setTotalSapFinal(dblOrNull(payload.get("totalSapFinal")));
+            s.setSapRc(str(payload.get("sapRc")));
+            s.setSapDefenseEtRecours(str(payload.get("sapDefenseEtRecours")));
+            s.setCumulReglement(str(payload.get("cumulReglement")));
+            s.setProvisionDeRecours(dblOrNull(payload.get("provisionDeRecours")));
+            s.setProvisionDeRecoursDefenseEtRecours(str(payload.get("provisionDeRecoursDefenseEtRecours")));
+            s.setPrevisionDeRecoursDomVeh(str(payload.get("previsionDeRecoursDomVeh")));
+            s.setCumulPrevisionDeRecours(str(payload.get("cumulPrevisionDeRecours")));
+
+            // 3) Persister
+            Sinistre saved = sinistreRepository.save(s);
+            return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erreur lors de la création", "message", e.getMessage()));
+        }
+    }
+
+    /* ===== Helpers privés (mets-les en bas du controller) ===== */
+
+    private static String str(Object v) {
+        if (v == null) return null;
+        String s = String.valueOf(v).trim();
+        return s.isEmpty() ? null : s;
+    }
+
+    private static Integer intOrNull(Object v) {
+        try {
+            if (v == null) return null;
+            if (v instanceof Number n) return n.intValue();
+            String s = String.valueOf(v).trim().replaceAll("\\s+", "");
+            return s.isEmpty() ? null : Integer.parseInt(s);
+        } catch (Exception ignored) { return null; }
+    }
+
+    private static Double dblOrNull(Object v) {
+        try {
+            if (v == null) return null;
+            if (v instanceof Number n) return n.doubleValue();
+            String s = String.valueOf(v).trim().replace(" ", "").replace(",", ".");
+            return s.isEmpty() ? null : Double.parseDouble(s);
+        } catch (Exception ignored) { return null; }
+    }
+
+    /**
+     * Accepte "yyyy-MM-dd", "dd/MM/yyyy" ou timestamps.
+     * Retourne null si vide/invalide.
+     */
+    private static Date dateOrNull(Object v) {
+        if (v == null) return null;
+        if (v instanceof Date d) return d;
+        String s = String.valueOf(v).trim();
+        if (s.isEmpty()) return null;
+        try {
+            // ISO court: 2025-08-19
+            return java.sql.Date.valueOf(s);
+        } catch (Exception ignored) {}
+        try {
+            // Français: 19/08/2025
+            return new java.text.SimpleDateFormat("dd/MM/yyyy").parse(s);
+        } catch (Exception ignored) {}
+        try {
+            // timestamp (ms)
+            long t = Long.parseLong(s);
+            return new Date(t);
+        } catch (Exception ignored) {}
+        return null;
+    }
+
 }

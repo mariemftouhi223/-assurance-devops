@@ -2,7 +2,6 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-
 // ✅ INTERFACES POUR LA DÉTECTION DE FRAUDE ML
 export interface FraudDetection {
   isFraud: boolean;
@@ -760,4 +759,14 @@ export class SinistreServiceAvecML {
       return false;
     }
   }
+
+  createSinistre(sinistre: Partial<SinistreAvecML>): Observable<any> {
+    const payload = {
+      ...sinistre,
+      numSinistre: sinistre.numSinistre ? String(sinistre.numSinistre).trim() : undefined
+    };
+    return this.http.post(`${this.API_BASE_URL}/add`, payload);
+  }
+
+
 }

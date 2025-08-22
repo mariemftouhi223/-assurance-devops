@@ -15,8 +15,7 @@ public class Sinistre {
     @Column(name = "num_sinistre")
     private String numSinistre;
 
-    // ✅ COLONNES IMPORTANTES DEMANDÉES PAR L'UTILISATEUR
-
+    // ===== Colonnes principales =====
     @Column(name = "ANNEE_EXERCICE")
     private Integer anneeExercice;
 
@@ -33,7 +32,8 @@ public class Sinistre {
     @Column(name = "PROCHAIN_TERME")
     private String prochainTerme;
 
-    @Column(name = "usage")
+    // 'usage' est un mot réservé MySQL/MariaDB → on cite le nom de colonne
+    @Column(name = "`usage`")
     private String usage;
 
     @Column(name = "CODE_INTERMEDIAIRE")
@@ -47,6 +47,10 @@ public class Sinistre {
 
     @Column(name = "TYPE_SINISTRE")
     private String typeSinistre;
+
+    // Champ complémentaire éventuel coté front
+    @Column(name = "type_usage")
+    private String typeUsage;
 
     @Column(name = "COMPAGNIE_ADVERSE")
     private String compagnieAdverse;
@@ -69,7 +73,8 @@ public class Sinistre {
     @Column(name = "LIB_ETAT_SINISTRE")
     private String libEtatSinistre;
 
-    @Column(name = "etat_sin_année")
+    // Nom de colonne avec accent → on le cite aussi
+    @Column(name = "`etat_sin_année`")
     private String etatSinAnnee;
 
     @Column(name = "MONTANT_EVALUATION")
@@ -108,8 +113,7 @@ public class Sinistre {
     @Column(name = "CUMUL_PREVISION_DE_RECOURS")
     private String cumulPrevisionDeRecours;
 
-    // ✅ COLONNES SUPPLÉMENTAIRES UTILES POUR L'AFFICHAGE
-
+    // ===== Colonnes d'affichage =====
     @Column(name = "gouvernorat")
     private String gouvernorat;
 
@@ -119,120 +123,69 @@ public class Sinistre {
     @Column(name = "nombre_deces")
     private Integer nombreDeces;
 
-    @Column(name = "type_usage")
-    private String typeUsage;
-
-    // ✅ CONSTRUCTEURS
-
+    // ===== Constructeurs =====
     public Sinistre() {}
 
     public Sinistre(String numSinistre) {
         this.numSinistre = numSinistre;
     }
 
-    // ✅ MÉTHODES UTILITAIRES POUR L'AFFICHAGE
-
-    /**
-     * Retourne le montant d'évaluation formaté en dinars tunisiens
-     */
+    // ===== Méthodes utilitaires (affichage) =====
     public String getMontantEvaluationFormate() {
         if (montantEvaluation == null) return "0,00 DT";
         return String.format("%.2f DT", montantEvaluation);
     }
 
-    /**
-     * Retourne le total règlement formaté en dinars tunisiens
-     */
     public String getTotalReglementFormate() {
         if (totalReglement == null) return "0,00 DT";
         return String.format("%.2f DT", totalReglement);
     }
 
-    /**
-     * Retourne l'état du sinistre avec couleur pour l'affichage
-     */
     public String getEtatAvecCouleur() {
         if (libEtatSinistre == null) return "NON DÉFINI";
-
         switch (libEtatSinistre.toUpperCase()) {
-            case "MISE A JOUR":
-                return "🔄 " + libEtatSinistre;
-            case "REPRISE":
-                return "▶️ " + libEtatSinistre;
-            case "REOUVERTURE":
-                return "🔓 " + libEtatSinistre;
-            case "CLOTURE":
-                return "✅ " + libEtatSinistre;
-            default:
-                return "📋 " + libEtatSinistre;
+            case "MISE A JOUR":  return "🔄 " + libEtatSinistre;
+            case "REPRISE":      return "▶️ " + libEtatSinistre;
+            case "REOUVERTURE":  return "🔓 " + libEtatSinistre;
+            case "CLOTURE":      return "✅ " + libEtatSinistre;
+            default:             return "📋 " + libEtatSinistre;
         }
     }
 
-    /**
-     * Retourne la nature du sinistre avec icône
-     */
     public String getNatureAvecIcone() {
         if (natureSinistre == null) return "❓ NON DÉFINI";
-
         switch (natureSinistre.toUpperCase()) {
-            case "CORPOREL":
-                return "🏥 " + natureSinistre;
-            case "MATERIEL":
-                return "🚗 " + natureSinistre;
-            case "MIXTE":
-                return "⚡ " + natureSinistre;
-            default:
-                return "📋 " + natureSinistre;
+            case "CORPOREL": return "🏥 " + natureSinistre;
+            case "MATERIEL": return "🚗 " + natureSinistre;
+            case "MIXTE":    return "⚡ " + natureSinistre;
+            default:         return "📋 " + natureSinistre;
         }
     }
 
-    /**
-     * Retourne le type de sinistre avec icône
-     */
     public String getTypeAvecIcone() {
         if (typeSinistre == null) return "❓ NON DÉFINI";
-
         switch (typeSinistre.toUpperCase()) {
-            case "COLLISION":
-                return "💥 " + typeSinistre;
-            case "VOL":
-                return "🔒 " + typeSinistre;
-            case "INCENDIE":
-                return "🔥 " + typeSinistre;
-            case "BRIS DE GLACE":
-                return "🪟 " + typeSinistre;
-            default:
-                return "📋 " + typeSinistre;
+            case "COLLISION":     return "💥 " + typeSinistre;
+            case "VOL":           return "🔒 " + typeSinistre;
+            case "INCENDIE":      return "🔥 " + typeSinistre;
+            case "BRIS DE GLACE": return "🪟 " + typeSinistre;
+            default:              return "📋 " + typeSinistre;
         }
     }
 
-    /**
-     * Calcule l'âge du sinistre en jours
-     */
     public long getAgeSinistreEnJours() {
         if (dateDeclaration == null) return 0;
-
         long diffInMillies = System.currentTimeMillis() - dateDeclaration.getTime();
         return diffInMillies / (24 * 60 * 60 * 1000);
     }
 
-    /**
-     * Retourne le statut de priorité basé sur l'âge et le montant
-     */
     public String getPriorite() {
         long age = getAgeSinistreEnJours();
         double montant = montantEvaluation != null ? montantEvaluation : 0;
-
-        if (age > 365 || montant > 50000) {
-            return "🔴 HAUTE";
-        } else if (age > 180 || montant > 20000) {
-            return "🟡 MOYENNE";
-        } else {
-            return "🟢 NORMALE";
-        }
+        if (age > 365 || montant > 50000) return "🔴 HAUTE";
+        if (age > 180 || montant > 20000) return "🟡 MOYENNE";
+        return "🟢 NORMALE";
     }
-
-    // ✅ MÉTHODES STANDARD
 
     @Override
     public String toString() {
