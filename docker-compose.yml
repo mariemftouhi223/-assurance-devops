@@ -1,24 +1,24 @@
 version: '3.8'
-
 services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      - MYSQL_DATABASE=assurance
+    ports:
+      - "3306:3306"
+
   backend:
     build: ./backend-assurance
-    container_name: backend-service-devops
+    depends_on:
+      - mysql
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/assurance
     ports:
       - "9099:9099"
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/assurance?useSSL=false&allowPublicKeyRetrieval=true
-      - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=
-      - KEYCLOAK_REALM=assurance
-      - KEYCLOAK_AUTH_SERVER_URL=http://host.docker.internal:9090
-    restart: unless-stopped
 
   frontend:
     build: ./frontend-assurance
-    container_name: frontend-service-devops
     ports:
       - "4200:80"
-    depends_on:
-      - backend
-    restart: unless-stopped
