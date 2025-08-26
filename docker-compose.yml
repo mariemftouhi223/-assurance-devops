@@ -8,17 +8,29 @@ services:
       - MYSQL_DATABASE=assurance
     ports:
       - "3306:3306"
+    networks:
+      - app-network
 
   backend:
     build: ./backend-assurance
     depends_on:
       - mysql
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/assurance
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/assurance?useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=
     ports:
       - "9099:9099"
+    networks:
+      - app-network
 
   frontend:
     build: ./frontend-assurance
     ports:
       - "4200:80"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
