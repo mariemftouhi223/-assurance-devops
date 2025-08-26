@@ -1,9 +1,8 @@
 version: '3.8'
 
 services:
-  # Service pour le Backend (Votre application Java)
   backend:
-    image: assurance-backend:latest
+    build: ./backend-assurance
     container_name: backend-service-devops
     ports:
       - "9099:9099"
@@ -15,9 +14,8 @@ services:
       - KEYCLOAK_AUTH_SERVER_URL=http://host.docker.internal:9090
     restart: unless-stopped
 
-  # Service pour le Frontend (Votre application Angular)
   frontend:
-    image: assurance-frontend:latest
+    build: ./frontend-assurance
     container_name: frontend-service-devops
     ports:
       - "4200:80"
