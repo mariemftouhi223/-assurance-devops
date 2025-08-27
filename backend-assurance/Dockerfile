@@ -1,26 +1,43 @@
-﻿# ====== Étape 1 : Build (JDK 21 + Maven) ======
-FROM maven:3.9.9-eclipse-temurin-21 AS build
+﻿FROM maven:3.9.9-eclipse-temurin-21 AS build
+
 WORKDIR /app
 
-# Copie minimale pour profiter du cache Maven
+# Copier pom.xml pour cache des dépendances
 COPY pom.xml .
-# (facultatif mais accélère les builds suivants)
-RUN mvn -q -B -DskipTests dependency:go-offline
 
-# Puis le code
+# Télécharger dépendances (cache si pom.xml inchangé)
+RUN mvn dependency:go-offline -B
+
+# Copier code source
 COPY src ./src
 
-# Build du fat-jar Spring Boot
-RUN mvn -q -B -DskipTests clean package
+# Build optimisé
+RUN mvn clean package -DskipTests -B -q
 
-# ====== Étape 2 : Runtime (JRE 21) ======
+# Stage production
 FROM eclipse-temurin:21-jre-jammy
+
 WORKDIR /app
 
-# ton app écoute en interne sur 9099
+# Utilisateur non-root sécurisé
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Copier JAR
+COPY --from=build /app/target/*.jar app.jar
+
+# Permissions
+RUN chown appuser:appuser app.jar
+
+USER appuser
+
 EXPOSE 9099
 
-# Copie du jar produit à l'étape de build
-COPY --from=build /app/target/*.jar /app/app.jar
+# JVM optimisée conteneur
+ENV JAVA_OPTS="-Xmx512m -Xms256m -XX:+UseG1GC -XX:+UseContainerSupport"
 
-ENTRYPOINT ["java","-jar","/app/app.jar"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:9099/actuator/health || exit 1
+
+CMD ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+

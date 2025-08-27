@@ -1,0 +1,22 @@
+services:
+  backend:
+    image: assurance-backend:latest
+    container_name: backend-dev
+    ports:
+      - "9099:9099"
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+    restart: unless-stopped
+
+  frontend:
+    image: assurance-frontend:latest
+    container_name: frontend-dev
+    ports:
+      - "4200:80"
+    volumes:
+      - ./frontend-assurance/docker/nginx:/etc/nginx/conf.d:ro
+    depends_on:
+      - backend
+    restart: unless-stopped

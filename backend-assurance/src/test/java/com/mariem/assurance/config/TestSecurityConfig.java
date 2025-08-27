@@ -8,8 +8,6 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
-import static org.mockito.Mockito.mock;
-
 @TestConfiguration
 public class TestSecurityConfig {
 
@@ -23,11 +21,10 @@ public class TestSecurityConfig {
     }
 
     @Bean
+    @Primary
     public TaskScheduler taskScheduler() {
         ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
         scheduler.initialize();
         return scheduler;
-
-
     }
 }

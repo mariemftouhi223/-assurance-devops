@@ -1,36 +1,116 @@
-version: '3.8'
 services:
-  mysql:
-    image: mysql:8.0
-    environment:
-      - MYSQL_ROOT_PASSWORD=
-      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
-      - MYSQL_DATABASE=assurance
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: assurance-keycloak
+    restart: unless-stopped
     ports:
-      - "3306:3306"
+      - "9090:8080"
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin123
+      - KC_DB=dev-file
+    command: start-dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     networks:
-      - app-network
+      - assurance-network
+    volumes:
+      - keycloak-data:/opt/keycloak/data
 
   backend:
-    build: ./backend-assurance
-    depends_on:
-      - mysql
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/assurance?useSSL=false&allowPublicKeyRetrieval=true
-      - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=
+    build:
+      context: ./backend-assurance
+      dockerfile: Dockerfile
+    image: assurance-backend:${IMAGE_TAG:-latest}
+    container_name: assurance-backend
+    restart: unless-stopped
     ports:
       - "9099:9099"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - JAVA_OPTS=-Xmx512m -Xms256m
+      - KEYCLOAK_URL=http://keycloak:8080
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9099/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     networks:
-      - app-network
+      - assurance-network
 
   frontend:
-    build: ./frontend-assurance
+    build:
+      context: ./frontend-assurance
+      dockerfile: Dockerfile
+    image: assurance-frontend:${IMAGE_TAG:-latest}
+    container_name: assurance-frontend
+    restart: unless-stopped
     ports:
-      - "4200:80"
+      - "4200:4200"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4200/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
-      - app-network
+      - assurance-network
+
+  ml-fraud-service:
+    build:
+      context: ./ml-fraud-service
+      dockerfile: Dockerfile
+    image: ml-fraud-service:${IMAGE_TAG:-latest}
+    container_name: ml-fraud-service
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - assurance-network
+
+  ml-fraud-service-2:
+    build:
+      context: ./ml-fraud-service-2
+      dockerfile: Dockerfile
+    image: ml-fraud-service-2:${IMAGE_TAG:-latest}
+    container_name: ml-fraud-service-2
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      - FLASK_ENV=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - assurance-network
 
 networks:
-  app-network:
+  assurance-network:
     driver: bridge
+
+volumes:
+  keycloak-data:
+    driver: local

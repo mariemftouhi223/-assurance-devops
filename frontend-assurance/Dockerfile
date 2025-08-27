@@ -1,25 +1,46 @@
-﻿FROM node:18 AS build
+FROM node:18-alpine AS build
+
 WORKDIR /app
+
+# Copier package.json pour cache
 COPY package*.json ./
-RUN npm ci
+
+# Installer toutes les dépendances (dev + prod pour Angular CLI)
+RUN npm ci --silent
+
+# Copier code source
 COPY . .
-RUN npm run build -- --configuration development
 
-FROM nginx:1.25-alpine
+# Build Angular
+RUN npm run build
 
-COPY --from=build /app/dist /opt/dist
+# Production avec Nginx
+FROM nginx:alpine
 
-RUN set -e; \
-    if [ -d "/opt/dist/browser" ]; then \
-        cp -r /opt/dist/browser/* /usr/share/nginx/html/; \
-    elif find /opt/dist -maxdepth 2 -type d -name browser | grep -q .; then \
-        d=$(find /opt/dist -maxdepth 2 -type d -name browser | head -n1); \
-        cp -r "$d"/* /usr/share/nginx/html/; \
-    elif [ "$(find /opt/dist -mindepth 1 -maxdepth 1 -type d | wc -l)" -gt 0 ]; then \
-        d=$(find /opt/dist -mindepth 1 -maxdepth 1 -type d | head -n1); \
-        cp -r "$d"/* /usr/share/nginx/html/; \
-    else \
-        cp -r /opt/dist/* /usr/share/nginx/html/; \
-    fi
+# Config Nginx
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+# Copier build Angular (dist/book-network-ui ou dist/)
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# Sécurité
+RUN addgroup -g 1001 -S nginx && \
+    adduser -S -D -H -u 1001 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx
+
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    chown -R nginx:nginx /etc/nginx/conf.d
+
+RUN touch /var/run/nginx.pid && \
+    chown -R nginx:nginx /var/run/nginx.pid
+
+USER nginx
+
+EXPOSE 4200
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:4200/health || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]
+
