@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+data/
+datasets/
+logs/
+notebooks/
+.git
+.vscode/
+*.log
+*.md
+Dockerfile
+docker-compose*

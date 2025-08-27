@@ -1,3 +1,7 @@
-﻿.git
-.gitignore
+﻿target
+.git
+.vscode
+*.log
+*.md
 Dockerfile
+docker-compose*
