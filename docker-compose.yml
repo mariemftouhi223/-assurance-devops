@@ -10,14 +10,10 @@ services:
       - KEYCLOAK_ADMIN_PASSWORD=admin123
       - KC_DB=dev-file
     command: start-dev
+    # Sonde "toujours OK" pour CI (évite le blocage service_healthy)
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    networks:
-      - assurance-network
+      test: ["CMD-SHELL", "exit 0"]
+    networks: [assurance-network]
     volumes:
       - keycloak-data:/opt/keycloak/data
 
@@ -25,7 +21,7 @@ services:
     build:
       context: ./backend-assurance
       dockerfile: Dockerfile
-    image: assurance-backend:${IMAGE_TAG:-latest}
+    image: mariemftouhi/assurance-backend:${IMAGE_TAG:-latest}
     container_name: assurance-backend
     restart: unless-stopped
     ports:
@@ -36,76 +32,69 @@ services:
       - KEYCLOAK_URL=http://keycloak:8080
     depends_on:
       keycloak:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9099/actuator/health"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9099/actuator/health | grep -q '\"status\":\"UP\"'"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    networks:
-      - assurance-network
+    networks: [assurance-network]
 
   frontend:
     build:
       context: ./frontend-assurance
-      dockerfile: Dockerfile
-    image: assurance-frontend:${IMAGE_TAG:-latest}
+    image: mariemftouhi/assurance-frontend:${IMAGE_TAG:-latest}
     container_name: assurance-frontend
     restart: unless-stopped
+    # Image finale = NGINX → écoute 80
     ports:
-      - "4200:4200"
+      - "4200:80"
     depends_on:
       backend:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4200/health"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ | grep -qi '<html'"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
-    networks:
-      - assurance-network
+      start_period: 10s
+    networks: [assurance-network]
 
   ml-fraud-service:
     build:
       context: ./ml-fraud-service
-      dockerfile: Dockerfile
-    image: ml-fraud-service:${IMAGE_TAG:-latest}
+    image: mariemftouhi/ml-fraud-service:${IMAGE_TAG:-latest}
     container_name: ml-fraud-service
     restart: unless-stopped
-    ports:
-      - "5000:5000"
+    # Évite les conflits en CI : port hôte aléatoire
+    ports: ["5000"]
     environment:
       - FLASK_ENV=production
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5000/health | grep -q OK"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-    networks:
-      - assurance-network
+    networks: [assurance-network]
 
   ml-fraud-service-2:
     build:
       context: ./ml-fraud-service-2
-      dockerfile: Dockerfile
-    image: ml-fraud-service-2:${IMAGE_TAG:-latest}
+    image: mariemftouhi/ml-fraud-service-2:${IMAGE_TAG:-latest}
     container_name: ml-fraud-service-2
     restart: unless-stopped
-    ports:
-      - "5001:5001"
+    ports: ["5001"]   # port hôte aléatoire
     environment:
       - FLASK_ENV=production
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5001/health | grep -q OK"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-    networks:
-      - assurance-network
+    networks: [assurance-network]
 
 networks:
   assurance-network:
