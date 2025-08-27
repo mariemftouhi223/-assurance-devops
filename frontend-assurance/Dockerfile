@@ -18,7 +18,7 @@ RUN npm run build
 FROM nginx:alpine
 
 # Config Nginx
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/nginx/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copier build Angular (dist/book-network-ui ou dist/)
 COPY --from=build /app/dist /usr/share/nginx/html
