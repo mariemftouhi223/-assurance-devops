@@ -25,7 +25,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 /**
  * Tests d'intégration pour FraudDetectionController
  *
@@ -35,9 +36,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * @author Manus AI
  * @version 1.0
  */
+@AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(FraudDetectionController.class)
 public class FraudDetectionControllerIntegrationTest {
 
+
+
+    @MockBean
+    private JwtDecoder jwtDecoder;
     @Autowired
     private MockMvc mockMvc;
 
