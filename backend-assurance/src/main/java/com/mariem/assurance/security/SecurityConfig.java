@@ -3,7 +3,6 @@ package com.mariem.assurance.security;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -34,7 +33,7 @@ public class SecurityConfig {
 
     // === Bean JwtDecoder pour éviter "No qualifying bean of type 'JwtDecoder'" ===
     @Bean
-    @Profile("!test")
+    
     public JwtDecoder jwtDecoder(
             @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}")
             String jwkSetUri) {
