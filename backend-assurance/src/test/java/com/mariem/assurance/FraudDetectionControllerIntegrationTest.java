@@ -1,6 +1,7 @@
 package com.mariem.assurance;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mariem.assurance.config.TestSecurityConfig;
 import com.mariem.assurance.controller.fraud.FraudDetectionController;
 import com.mariem.assurance.dto.fraud.FraudPredictionRequest;
 import com.mariem.assurance.dto.fraud.ContractData;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -36,6 +38,8 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
  * @author Manus AI
  * @version 1.0
  */
+@Import(TestSecurityConfig.class)
+
 @AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(FraudDetectionController.class)
 public class FraudDetectionControllerIntegrationTest {
@@ -380,3 +384,4 @@ public class FraudDetectionControllerIntegrationTest {
         return response;
     }
 }
+
