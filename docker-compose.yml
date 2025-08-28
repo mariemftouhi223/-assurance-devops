@@ -1,7 +1,6 @@
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:24.0.5   # évite "latest"
-    container_name: assurance-keycloak
+    image: quay.io/keycloak/keycloak:24.0.5
     restart: unless-stopped
     ports:
       - "9090:8080"
@@ -11,9 +10,8 @@ services:
       - KC_DB=dev-file
       - JAVA_OPTS=-XX:MaxRAMPercentage=75
     command: start-dev
-    # En CI : ne bloque jamais le pipeline
     healthcheck:
-      test: ["CMD-SHELL", "exit 0"]
+      test: ["CMD-SHELL", "exit 0"]   # ne bloque jamais la CI
     networks: [assurance-network]
     volumes:
       - keycloak-data:/opt/keycloak/data
@@ -23,10 +21,8 @@ services:
       context: ./backend-assurance
       dockerfile: Dockerfile
     image: mariemftouhi/assurance-backend:${IMAGE_TAG:-latest}
-    container_name: assurance-backend
     restart: unless-stopped
-    # Port hôte ALÉATOIRE pour éviter "port already allocated" en CI
-    # (le service reste joignable sur 9099 depuis SON conteneur)
+    # Port hôte aléatoire → évite "port already allocated" en CI
     ports: ["9099"]
     environment:
       - SPRING_PROFILES_ACTIVE=prod
@@ -35,22 +31,18 @@ services:
     depends_on:
       keycloak:
         condition: service_started
-    # Pas de healthcheck HTTP ici (pas de curl/wget dans l'image JRE)
     networks: [assurance-network]
 
   frontend:
     build:
       context: ./frontend-assurance
     image: mariemftouhi/assurance-frontend:${IMAGE_TAG:-latest}
-    container_name: assurance-frontend
     restart: unless-stopped
-    # NGINX écoute 80 → on publie 4200 côté hôte (ok pour démo)
     ports:
-      - "4200:80"
+      - "4200:80"      # OK si un seul run à la fois
     depends_on:
       backend:
         condition: service_started
-    # nginx:alpine a 'wget' (busybox) → check léger
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ | grep -qi '<html'"]
       interval: 30s
@@ -63,13 +55,10 @@ services:
     build:
       context: ./ml-fraud-service
     image: mariemftouhi/ml-fraud-service:${IMAGE_TAG:-latest}
-    container_name: ml-fraud-service
     restart: unless-stopped
-    # Port hôte ALÉATOIRE (évite conflit)
-    ports: ["5000"]
+    ports: ["5000"]   # hôte aléatoire
     environment:
       - FLASK_ENV=production
-    # Python est présent → healthcheck sans curl/wget
     healthcheck:
       test: ["CMD", "python", "-c",
              "import urllib.request,sys; urllib.request.urlopen('http://127.0.0.1:5000/health',timeout=5).read(); sys.exit(0)"]
@@ -83,7 +72,6 @@ services:
     build:
       context: ./ml-fraud-service-2
     image: mariemftouhi/ml-fraud-service-2:${IMAGE_TAG:-latest}
-    container_name: ml-fraud-service-2
     restart: unless-stopped
     ports: ["5001"]   # hôte aléatoire
     environment:

@@ -200,6 +200,7 @@
 
 	<build>
 		<plugins>
+			<!-- Spring Boot -->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
@@ -213,7 +214,7 @@
 				</configuration>
 			</plugin>
 
-
+			<!-- Compilation Java 21 -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
@@ -224,9 +225,7 @@
 				</configuration>
 			</plugin>
 
-
-
-			<!-- Plugin pour forcer la résolution des versions -->
+			<!-- Analyse des dépendances (tu l’avais déjà) -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-dependency-plugin</artifactId>
@@ -244,29 +243,62 @@
 				</executions>
 			</plugin>
 
+			<!-- Build d'image Docker avec Jib (déjà présent) -->
 			<plugin>
 				<groupId>com.google.cloud.tools</groupId>
 				<artifactId>jib-maven-plugin</artifactId>
 				<version>3.4.0</version>
 				<configuration>
 					<from>
-						<image>openjdk:21-slim</image> <!-- IMPORTANT: Doit correspondre à votre version de Java (21) -->
+						<image>openjdk:21-slim</image>
 					</from>
 					<to>
-						<image>assurance-backend:latest</image> <!-- Le nom de votre image Docker -->
+						<image>assurance-backend:latest</image>
 					</to>
 					<container>
 						<ports>
-							<port>9099</port> <!-- Expose le port de votre application -->
+							<port>9099</port>
 						</ports>
 					</container>
 				</configuration>
 			</plugin>
 
+			<!-- ✅ Tests JUnit5 + Java 21 -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>3.2.5</version>
+			</plugin>
 
+			<!-- ✅ JaCoCo : prépare l’agent + génère le rapport XML (pour Sonar) -->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.11</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- ✅ Sonar (scanner Maven) -->
+			<plugin>
+				<groupId>org.sonarsource.scanner.maven</groupId>
+				<artifactId>sonar-maven-plugin</artifactId>
+				<version>3.11.0.3922</version>
+			</plugin>
 		</plugins>
 	</build>
-
 
 
 
