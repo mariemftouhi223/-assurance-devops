@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
+
 @SpringBootTest
 @Import(TestSecurityConfig.class)  // <--- Ajout ici pour fournir le JwtDecoder mock
 @ActiveProfiles("test")
