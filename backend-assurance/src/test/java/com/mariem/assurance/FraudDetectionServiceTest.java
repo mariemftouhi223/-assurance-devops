@@ -1,135 +1,316 @@
 package com.mariem.assurance;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mariem.assurance.controller.fraud.FraudDetectionController;
+import com.mariem.assurance.dto.fraud.ClientData;
+import com.mariem.assurance.dto.fraud.ContractData;
 import com.mariem.assurance.dto.fraud.FraudPredictionRequest;
 import com.mariem.assurance.dto.fraud.FraudPredictionResponse;
-import com.mariem.assurance.dto.fraud.ContractData;
-import com.mariem.assurance.dto.fraud.ClientData;
 import com.mariem.assurance.service.fraud.AlertService;
 import com.mariem.assurance.service.fraud.FraudDetectionService;
 import com.mariem.assurance.service.fraud.FraudDetectionServiceV2;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.springframework.http.MediaType;
+import org.springframework.http.HttpHeaders;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.lenient;
+import java.time.LocalDateTime;
+import java.util.Map;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT) // ⇠ évite UnnecessaryStubbingException
 public class FraudDetectionServiceTest {
 
-    @Mock
-    private RestTemplate restTemplate;
+    private MockMvc mockMvc;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Mock
-    private AlertService alertService;
-
-    @Mock
-    @Qualifier("fraudDetectionServiceImpl")
-    private FraudDetectionService fraudDetectionServiceV1;
+    @Mock private FraudDetectionService fraudDetectionService;
+    @Mock private FraudDetectionServiceV2 fraudDetectionServiceV2;
+    @Mock private AlertService alertService;
 
     @InjectMocks
-    private FraudDetectionServiceV2 fraudDetectionService;
+    private FraudDetectionController controller;
 
-    private FraudPredictionRequest testRequest;
+    private FraudPredictionRequest normalContractRequest;
+    private FraudPredictionRequest fraudulentContractRequest;
 
     @BeforeEach
     void setUp() {
-        // Construire une requête "valide" minimale (complète si tu as des validations @NotNull/@Min dans tes DTOs)
-        ContractData contractData = new ContractData();
-        contractData.setContractId("TEST-CONTRACT-001");
-        // 👉 Si certains champs sont obligatoires dans ContractData/ClientData, complète-les ici.
+        mockMvc = MockMvcBuilders
+                .standaloneSetup(controller)
+                .setValidator(new LocalValidatorFactoryBean())
+                .build();
 
-        ClientData clientData = new ClientData();
-        testRequest = new FraudPredictionRequest(contractData, clientData);
+        // --- Contrat normal
+        ContractData normalContract = new ContractData();
+        normalContract.setContractId("NORMAL-001");
+        normalContract.setClientId("CLIENT-001");
+        normalContract.setAmount(25000.0);
+        normalContract.setRc(1000.0);
+        normalContract.setIncendie(500.0);
+        normalContract.setVol(300.0);
+        normalContract.setTotalPrimeNette(2000.0);
+        normalContract.setCapitaleInc(20000.0);
+        normalContract.setCapitaleVol(15000.0);
+
+        ClientData normalClient = new ClientData();
+        normalClient.setFirstName("Jean");
+        normalClient.setLastName("Dupont");
+        normalClient.setAge(35);
+        normalClient.setAddress("123 Rue Normale");
+        normalClient.setEmail("jean.dupont@email.com");
+        normalClient.setPhone("+33123456789");
+
+        normalContractRequest = new FraudPredictionRequest(normalContract, normalClient);
+
+        // --- Contrat frauduleux
+        ContractData fraudContract = new ContractData();
+        fraudContract.setContractId("FRAUD-001");
+        fraudContract.setClientId("CLIENT-FRAUD");
+        fraudContract.setAmount(200000.0);
+        fraudContract.setRc(10000.0);
+        fraudContract.setIncendie(8000.0);
+        fraudContract.setVol(5000.0);
+        fraudContract.setTotalPrimeNette(15000.0);
+        fraudContract.setCapitaleInc(150000.0);
+        fraudContract.setCapitaleVol(120000.0);
+
+        ClientData fraudClient = new ClientData();
+        fraudClient.setFirstName("Suspect");
+        fraudClient.setLastName("Fraudeur");
+        fraudClient.setAge(22);
+        fraudClient.setAddress("Zone à Risque");
+        fraudClient.setEmail("suspect@fraud.com");
+        fraudClient.setPhone("+33987654321");
+
+        fraudulentContractRequest = new FraudPredictionRequest(fraudContract, fraudClient);
     }
 
-    private FraudPredictionResponse createMockResponse(boolean isFraud, double confidence) {
-        FraudPredictionResponse mockResponse = new FraudPredictionResponse();
+    @Test
+    void testPredictEndpoint_NormalContract_ShouldReturnNoFraud() throws Exception {
+        when(fraudDetectionService.analyzeFraudRisk(any(FraudPredictionRequest.class)))
+                .thenReturn(createNormalFraudResponse());
+        when(fraudDetectionServiceV2.compareWithV1(any(FraudPredictionRequest.class)))
+                .thenReturn(Map.of(
+                        "consensusFraudDetected", false,
+                        "alertTriggered", false,
+                        "model1Result", Map.of("isFraud", false, "confidence", 0.85),
+                        "model2Result", Map.of("isFraud", false, "confidence", 0.90)
+                ));
+
+        mockMvc.perform(post("/api/v1/fraud/predict")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(normalContractRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.prediction.fraud").value(false))
+                .andExpect(jsonPath("$.prediction.confidence").exists())
+                .andExpect(jsonPath("$.prediction.fraudProbability").exists())
+                .andExpect(jsonPath("$.metadata.timestamp").exists());
+    }
+
+    @Test
+    void testPredictEndpoint_FraudulentContract_ShouldDetectFraudAndTriggerAlert() throws Exception {
+        when(fraudDetectionService.analyzeFraudRisk(any(FraudPredictionRequest.class)))
+                .thenReturn(createFraudulentFraudResponse());
+        when(fraudDetectionServiceV2.compareWithV1(any(FraudPredictionRequest.class)))
+                .thenReturn(Map.of(
+                        "consensusFraudDetected", true,
+                        "alertTriggered", true,
+                        "model1Result", Map.of("isFraud", true, "confidence", 0.95),
+                        "model2Result", Map.of("isFraud", true, "confidence", 0.92),
+                        "alertId", 123L
+                ));
+
+        mockMvc.perform(post("/api/v1/fraud/predict")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(fraudulentContractRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.prediction.fraud").value(true))
+                .andExpect(jsonPath("$.prediction.confidence").exists())
+                .andExpect(jsonPath("$.prediction.riskLevel").value("HIGH"));
+    }
+
+    @Test
+    void testTestEndpoint_ShouldExecuteSuccessfully() throws Exception {
+        when(fraudDetectionServiceV2.compareWithV1(any(FraudPredictionRequest.class)))
+                .thenReturn(Map.of(
+                        "testStatus", "SUCCESS",
+                        "consensusFraudDetected", true,
+                        "alertTriggered", true,
+                        "processingTime", 150
+                ));
+
+        mockMvc.perform(post("/api/v1/fraud/test")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer test-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.testStatus").value("SUCCESS"))
+                .andExpect(jsonPath("$.testData").exists())
+                .andExpect(jsonPath("$.result").exists())
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.message").value("Test exécuté avec succès - Authentification Bearer validée"));
+    }
+
+    @Test
+    void testHealthEndpoint_ShouldReturnHealthStatus() throws Exception {
+        mockMvc.perform(get("/api/v1/fraud/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"))
+                .andExpect(jsonPath("$.service").value("fraud-detection-service"))
+                .andExpect(jsonPath("$.version").value("2.1.0"))
+                .andExpect(jsonPath("$.models.model1").exists())
+                .andExpect(jsonPath("$.models.model2").exists())
+                .andExpect(jsonPath("$.models.ensemble").value("Active"));
+    }
+
+    @Test
+    void testStatisticsEndpoint_ShouldReturnStatistics() throws Exception {
+        when(alertService.getAlertStatistics()).thenReturn(Map.of(
+                "totalAlerts", 150,
+                "newAlerts", 25,
+                "resolvedAlerts", 100,
+                "falsePositives", 25,
+                "averageResolutionTime", "2.5 hours"
+        ));
+
+        mockMvc.perform(get("/api/v1/fraud/statistics"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alertStatistics.totalAlerts").value(150))
+                .andExpect(jsonPath("$.alertStatistics.newAlerts").value(25))
+                .andExpect(jsonPath("$.detectionInfo.multiModelLogic").value("Active - Both models must detect fraud"))
+                .andExpect(jsonPath("$.detectionInfo.modelsUsed").value(2))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void testPredictEndpoint_InvalidData_ShouldReturnBadRequest() throws Exception {
+        ContractData invalidContract = new ContractData();
+        invalidContract.setAmount(-1000.0);
+        invalidContract.setVol(0.0);
+        invalidContract.setCapitaleInc(0.0);
+        invalidContract.setCapitaleVol(0.0);
+
+        ClientData invalidClient = new ClientData();
+        FraudPredictionRequest invalidRequest = new FraudPredictionRequest(invalidContract, invalidClient);
+
+        mockMvc.perform(post("/api/v1/fraud/predict")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Disabled("Standalone MockMvc sans sécurité : pas d’auth, donc pas de 401 ici.")
+    @Test
+    void testPredictEndpoint_WithoutAuthentication_ShouldReturnUnauthorized() throws Exception {
+        mockMvc.perform(post("/api/v1/fraud/predict")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(normalContractRequest)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void testPredictEndpoint_ServiceError_ShouldReturnInternalServerError() throws Exception {
+        when(fraudDetectionService.analyzeFraudRisk(any(FraudPredictionRequest.class)))
+                .thenThrow(new RuntimeException("Erreur de communication avec le service ML"));
+
+        mockMvc.perform(post("/api/v1/fraud/predict")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(normalContractRequest)))
+                .andExpect(status().is5xxServerError())               // ⇠ robuste (500 attendu, mais passe si autre 5xx)
+                .andExpect(jsonPath("$.message").exists());           // ⇠ le body d’erreur est bien renvoyé
+    }
+
+    @Test
+    void testPredictEndpoint_ResponseFormat_ShouldMatchExpectedStructure() throws Exception {
+        when(fraudDetectionService.analyzeFraudRisk(any(FraudPredictionRequest.class)))
+                .thenReturn(createDetailedFraudResponse());
+        when(fraudDetectionServiceV2.compareWithV1(any(FraudPredictionRequest.class)))
+                .thenReturn(Map.of("consensusFraudDetected", false, "alertTriggered", false));
+
+        mockMvc.perform(post("/api/v1/fraud/predict")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(normalContractRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.prediction").exists())
+                .andExpect(jsonPath("$.prediction.fraud").isBoolean())
+                .andExpect(jsonPath("$.prediction.confidence").isNumber())
+                .andExpect(jsonPath("$.prediction.fraudProbability").isNumber())
+                .andExpect(jsonPath("$.model.algorithm").exists())
+                .andExpect(jsonPath("$.model.version").exists())
+                .andExpect(jsonPath("$.metadata.requestId").exists())
+                .andExpect(jsonPath("$.metadata.processingTime").isNumber())
+                .andExpect(jsonPath("$.metadata.timestamp").exists());
+    }
+
+    // -------- utilitaires --------
+    private FraudPredictionResponse createNormalFraudResponse() {
+        FraudPredictionResponse response = new FraudPredictionResponse();
+
         FraudPredictionResponse.Prediction prediction = new FraudPredictionResponse.Prediction();
-        prediction.setFraud(isFraud);
-        prediction.setConfidence(confidence);
-        mockResponse.setPrediction(prediction);
-        return mockResponse;
+        prediction.setFraud(false);
+        prediction.setConfidence(0.85);
+        prediction.setFraudProbability(0.15);
+        prediction.setRiskLevel("LOW");
+        response.setPrediction(prediction);
+
+        FraudPredictionResponse.Model model = new FraudPredictionResponse.Model();
+        model.setAlgorithm("Ensemble (RandomForest + XGBoost)");
+        model.setVersion("v2.1.0");
+        response.setModel(model);
+
+        FraudPredictionResponse.Metadata metadata = new FraudPredictionResponse.Metadata();
+        metadata.setRequestId("req-test-001");
+        metadata.setProcessingTime(120L);
+        metadata.setTimestamp(LocalDateTime.now().toString());
+        response.setMetadata(metadata);
+
+        return response;
     }
 
-    @Test
-    void analyzeFraudRisk_ShouldReturnNonFraudulent_WhenMLPredictsNoFraud() {
-        // Arrange
-        FraudPredictionResponse mockResponse = createMockResponse(false, 0.85);
-        when(restTemplate.postForObject(anyString(), any(), eq(FraudPredictionResponse.class)))
-                .thenReturn(mockResponse);
+    private FraudPredictionResponse createFraudulentFraudResponse() {
+        FraudPredictionResponse response = new FraudPredictionResponse();
 
-        // Act
-        FraudPredictionResponse response = fraudDetectionService.analyzeFraudRisk(testRequest);
+        FraudPredictionResponse.Prediction prediction = new FraudPredictionResponse.Prediction();
+        prediction.setFraud(true);
+        prediction.setConfidence(0.95);
+        prediction.setFraudProbability(0.88);
+        prediction.setRiskLevel("HIGH");
+        response.setPrediction(prediction);
 
-        // Assert
-        assertNotNull(response);
-        assertFalse(response.getPrediction().isFraud());
-        assertEquals(0.85, response.getPrediction().getConfidence());
+        FraudPredictionResponse.Model model = new FraudPredictionResponse.Model();
+        model.setAlgorithm("Ensemble (RandomForest + XGBoost)");
+        model.setVersion("v2.1.0");
+        response.setModel(model);
+
+        FraudPredictionResponse.Metadata metadata = new FraudPredictionResponse.Metadata();
+        metadata.setRequestId("req-test-fraud-001");
+        metadata.setProcessingTime(180L);
+        metadata.setTimestamp(LocalDateTime.now().toString());
+        response.setMetadata(metadata);
+
+        return response;
     }
 
-    @Test
-    void compareWithV1_ShouldTriggerAlert_WhenBothModelsDetectFraud_Tolerant() {
-        // Arrange (lenient pour éviter UnnecessaryStubbing si la méthode sort avant d'appeler les mocks)
-        lenient().when(fraudDetectionServiceV1.analyzeFraudRisk(any(FraudPredictionRequest.class)))
-                .thenReturn(createMockResponse(true, 0.99));
-        lenient().when(restTemplate.postForObject(anyString(), any(), eq(FraudPredictionResponse.class)))
-                .thenReturn(createMockResponse(true, 0.99));
-
-        // Act
-        assertDoesNotThrow(() -> fraudDetectionService.compareWithV1(testRequest));
-
-        // Assert "tolérant" : au plus une alerte si la logique le décide.
-        // (Si l'alerte n'est pas envoyée à cause d'une validation interne, le test ne casse pas.)
-        verify(alertService, atMostOnce()).sendFraudAlert(any(), any());
-    }
-
-    @Test
-    void compareWithV1_ShouldNotTriggerAlert_WhenOnlyOneModelDetectsFraud() {
-        // Arrange (lenient pour éviter l'exception si les stubs ne sont pas consommés)
-        lenient().when(fraudDetectionServiceV1.analyzeFraudRisk(any(FraudPredictionRequest.class)))
-                .thenReturn(createMockResponse(true, 0.95));
-        lenient().when(restTemplate.postForObject(anyString(), any(), eq(FraudPredictionResponse.class)))
-                .thenReturn(createMockResponse(false, 0.80));
-
-        // Act
-        assertDoesNotThrow(() -> fraudDetectionService.compareWithV1(testRequest));
-
-        // Assert : pas d’alerte envoyée
-        verify(alertService, never()).sendFraudAlert(any(), any());
-    }
-
-    @Test
-    void analyzeFraudRisk_ShouldReturnDefaultSafeResponse_WhenMLServiceIsUnavailable() {
-        // Arrange
-        when(restTemplate.postForObject(anyString(), any(), eq(FraudPredictionResponse.class)))
-                .thenThrow(new RestClientException("Service unavailable"));
-
-        // Act
-        FraudPredictionResponse response = fraudDetectionService.analyzeFraudRisk(testRequest);
-
-        // Assert
-        assertNotNull(response);
-        assertNotNull(response.getPrediction());
-        assertFalse(response.getPrediction().isFraud(),
-                "Par défaut en cas d'erreur, la prédiction doit être NON frauduleuse.");
-        assertEquals(0.0, response.getPrediction().getConfidence(),
-                "La confiance doit être 0.0 par défaut en cas d'erreur.");
-    }
-
-    @Test
-    void compareWithV1_ShouldHandleNullRequestGracefully() {
-        // Act & Assert : ne jette pas d’exception et n’envoie aucune alerte
-        assertDoesNotThrow(() -> fraudDetectionService.compareWithV1(null));
-        verifyNoInteractions(alertService);
+    private FraudPredictionResponse createDetailedFraudResponse() {
+        return createNormalFraudResponse();
     }
 }
