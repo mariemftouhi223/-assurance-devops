@@ -39,7 +39,7 @@ services:
     image: mariemftouhi/assurance-frontend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
-      - "4200:80"      # OK si un seul run à la fois
+      - "4200:4200"      # OK si un seul run à la fois
     depends_on:
       backend:
         condition: service_started
@@ -92,3 +92,4 @@ networks:
 volumes:
   keycloak-data:
     driver: local
+
