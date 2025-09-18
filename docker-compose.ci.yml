@@ -1,0 +1,18 @@
+services:
+  keycloak:
+    ports: ["127.0.0.1::8080"]
+
+  backend:
+    ports: ["127.0.0.1::9099"]
+
+  frontend:
+    ports: ["127.0.0.1::80"]
+
+  ml-fraud-service:
+    ports: ["127.0.0.1::5000"]
+
+  ml-fraud-service-2:
+    ports: ["127.0.0.1::5001"]
+
+  metabase:
+    ports: ["127.0.0.1::3000"]
