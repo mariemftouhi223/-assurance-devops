@@ -1,25 +1,26 @@
+# Base + workdir
 FROM python:3.9-slim
 
-# Répertoire de travail
 WORKDIR /app
 
-# Dépendances système (comme tu avais)
-RUN apt-get update && apt-get install -y gcc g++ && rm -rf /var/lib/apt/lists/*
+# System deps (add libgomp1 for scikit-learn runtime)
+RUN apt-get update \
+ && apt-get install -y gcc g++ libgomp1 \
+ && rm -rf /var/lib/apt/lists/*
 
-# Dépendances Python
+# Python deps
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Code + modèles
+# App code + models
 COPY . .
 
-# Garde-fou : échoue le build si un modèle manque
-RUN test -f models/isolation_forest_sinistre_model.pkl \
- && test -f models/fraud_model.pkl \
- && test -f models/scaler_sinistre.pkl
+# Guard: ensure models are baked in
+# (keep the three tests as you already did)
+RUN test -f models/<MODEL_1>.pkl \
+ && test -f models/<MODEL_2>.pkl \
+ && test -f models/<SCALER>.pkl
 
-# Logs non bufférisés
 ENV PYTHONUNBUFFERED=1
-
 EXPOSE 5000
 CMD ["python", "ml_service.py"]
