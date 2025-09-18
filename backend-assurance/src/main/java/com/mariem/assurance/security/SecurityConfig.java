@@ -32,19 +32,21 @@ public class SecurityConfig {
         this.keycloakJwtAuthenticationConverter = keycloakJwtAuthenticationConverter;
     }
 
-    // === Bean JwtDecoder pour éviter "No qualifying bean of type 'JwtDecoder'" ===
+    // --- JwtDecoder (dÃ©sactivÃ© en profil test) ---
     @Bean
     @Profile("!test")
     public JwtDecoder jwtDecoder(
             @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}")
             String jwkSetUri) {
+        // utilise la valeur fournie par SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI (docker-compose)
         return NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
     }
 
-    // === Source CORS dédiée ===
+    // --- CORS ---
     @Bean(name = "apiCorsSource")
     public UrlBasedCorsConfigurationSource apiCorsSource() {
         CorsConfiguration cfg = new CorsConfiguration();
+        // patterns pour dev local
         cfg.setAllowedOriginPatterns(Arrays.asList(
                 "http://localhost:*", "https://localhost:*",
                 "http://127.0.0.1:*", "https://127.0.0.1:*"
@@ -60,34 +62,50 @@ public class SecurityConfig {
         return source;
     }
 
-    // === Chaîne de filtres Spring Security ===
+    // --- SÃ©curitÃ© HTTP ---
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   UrlBasedCorsConfigurationSource apiCorsSource) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            UrlBasedCorsConfigurationSource apiCorsSource
+    ) throws Exception {
+
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(apiCorsSource))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(
-                                "/v3/api-docs/**","/swagger-ui/**","/swagger-ui.html",
-                                "/api-docs/**","/docs/**","/webjars/**",
-                                "/ws/**","/api/v1/ws/**",
-                                "/actuator/**",
-                                "/auth-proxy/**","/api/v1/auth/**","/api/v1/public/**",
-                                "/assures", "/api/v1/assures/**", "/api/v1/test/public"
-                        ).permitAll()
+
+                                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // --- PUBLIC SANS TOKEN ---
+                        .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/assures/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/assures/test").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/assures/**").permitAll()
+
+                        // le reste comme chez toi...
+                                .requestMatchers(
+                                        "/v3/api-docs/**","/swagger-ui/**","/swagger-ui.html",
+                                        "/api-docs/**","/docs/**","/webjars/**",
+                                        "/ws/**","/api/v1/ws/**",
+                                        "/auth-proxy/**","/api/v1/auth/**","/api/v1/public/**",
+                                        "/assures", "/api/v1/test/public"
+                                ).permitAll()
+
                         .requestMatchers("/api/v1/fraud/**","/api/v1/test/private").authenticated()
+
+
+                // Tout le reste nÃ©cessite un token
                         .anyRequest().authenticated()
                 )
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt ->
-                        jwt.jwtAuthenticationConverter(keycloakJwtAuthenticationConverter)
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(
+                        jwt -> jwt.jwtAuthenticationConverter(keycloakJwtAuthenticationConverter)
                 ));
+
         return http.build();
     }
 
-    // === Filtre CORS dédié, priorité haute ===
+
     @Bean
     public FilterRegistrationBean<CorsFilter> corsFilterRegistration(UrlBasedCorsConfigurationSource apiCorsSource) {
         FilterRegistrationBean<CorsFilter> bean = new FilterRegistrationBean<>(new CorsFilter(apiCorsSource));

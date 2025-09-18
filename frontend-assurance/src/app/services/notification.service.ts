@@ -1,6 +1,10 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
+import SockJS from 'sockjs-client';
+
+import { Client, IMessage } from '@stomp/stompjs';
+
 export interface NotificationMessage {
   type: string;
   title: string;
@@ -9,7 +13,11 @@ export interface NotificationMessage {
   timestamp: string;
   priority: string;
   actionUrl?: string;
+  read?: boolean;
 }
+
+
+
 
 export interface FraudAlert {
   id: number;
@@ -24,21 +32,18 @@ export interface FraudAlert {
   suspiciousIndicators?: string[];
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class NotificationService {
-  private socket: WebSocket | null = null;
+  // ===== Connexion =====
+  private stomp?: Client;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectInterval = 3000; // 3 secondes
+  private readonly maxReconnectAttempts = 5;
+  private readonly reconnectInterval = 3000; // ms
 
-  // Observables pour les notifications
+  // ===== State/streams =====
   private notificationsSubject = new Subject<NotificationMessage>();
   private connectionStatusSubject = new BehaviorSubject<boolean>(false);
   private alertsSubject = new BehaviorSubject<FraudAlert[]>([]);
-
-  // Stockage local des notifications et alertes
   private notifications: NotificationMessage[] = [];
   private alerts: FraudAlert[] = [];
 
@@ -47,357 +52,218 @@ export class NotificationService {
     this.requestNotificationPermission();
   }
 
-  /**
-   * ✅ CORRECTION : URL WebSocket corrigée pour correspondre à votre backend
-   */
+  /** Base backend (marche avec ou sans proxy Angular) */
+  private backendBase(): string {
+    return window.location.port === '4200'
+      ? 'http://localhost:9099'
+      : `${window.location.protocol}//${window.location.host}`;
+  }
+
+  /** Connexion STOMP/SockJS */
   private connect(): void {
     try {
-      // ✅ URL WebSocket corrigée - ajustez le port selon votre configuration Spring Boot
-      const wsUrl = `ws://localhost:9099/ws/notifications?userId=${this.getCurrentUserId()}`;
+      const url = `${this.backendBase()}/ws/notifications`;
+      const sock = new SockJS(url);
 
-      console.log('🔌 Tentative de connexion WebSocket:', wsUrl);
-      this.socket = new WebSocket(wsUrl);
+      this.stomp = new Client({
+        webSocketFactory: () => sock as any,
+        reconnectDelay: 0, // on gère nous-mêmes
+      });
 
-      this.socket.onopen = (event) => {
-        console.log('✅ Connexion WebSocket établie');
+      this.stomp.onConnect = () => {
+        console.log('✅ STOMP connecté');
         this.connectionStatusSubject.next(true);
         this.reconnectAttempts = 0;
 
-        // Envoyer un message de souscription
+        // Abonnements aux topics du backend
+        this.stomp!.subscribe('/topic/fraud-alerts', (msg: IMessage) => this.onStompMessage(msg));
+        this.stomp!.subscribe('/topic/alert-updates', (msg: IMessage) => this.onStompMessage(msg));
+
+        // (optionnel) informer le serveur
         this.sendMessage('subscribe');
       };
 
-      this.socket.onmessage = (event) => {
-        try {
-          console.log('📨 Message WebSocket reçu:', event.data);
-          const notification: NotificationMessage = JSON.parse(event.data);
-          this.handleNotification(notification);
-        } catch (error) {
-          console.error('❌ Erreur lors du parsing du message WebSocket:', error);
-        }
-      };
-
-      this.socket.onclose = (event) => {
-        console.log('❌ Connexion WebSocket fermée:', event.code, event.reason);
+      this.stomp.onWebSocketClose = () => {
+        console.log('❌ WS fermé');
         this.connectionStatusSubject.next(false);
         this.attemptReconnect();
       };
 
-      this.socket.onerror = (error) => {
-        console.error('❌ Erreur WebSocket:', error);
-        this.connectionStatusSubject.next(false);
+      this.stomp.onStompError = (frame) => {
+        console.error('❌ STOMP error', frame);
       };
 
+      this.stomp.activate();
     } catch (error) {
-      console.error('❌ Erreur lors de la connexion WebSocket:', error);
+      console.error('❌ Erreur connexion STOMP', error);
       this.attemptReconnect();
     }
   }
 
-  /**
-   * Tente de se reconnecter automatiquement
-   */
-  private attemptReconnect(): void {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      console.log(`🔄 Tentative de reconnexion ${this.reconnectAttempts}/${this.maxReconnectAttempts}...`);
-
-      setTimeout(() => {
-        this.connect();
-      }, this.reconnectInterval);
-    } else {
-      console.error('❌ Nombre maximum de tentatives de reconnexion atteint');
+  private onStompMessage(msg: IMessage) {
+    try {
+      const notification: NotificationMessage = JSON.parse(msg.body);
+      this.handleNotification(notification);
+    } catch (e) {
+      console.error('❌ parse notif', e, msg.body);
     }
   }
 
-  /**
-   * ✅ AMÉLIORATION : Traitement amélioré des notifications avec plus de types
-   */
+  /** Reconnexion progressive */
+  private attemptReconnect(): void {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('❌ Nombre maximum de tentatives atteint');
+      return;
+    }
+    this.reconnectAttempts++;
+    console.log(`🔄 Reconnexion ${this.reconnectAttempts}/${this.maxReconnectAttempts}...`);
+    setTimeout(() => this.connect(), this.reconnectInterval);
+  }
+
+  /** Envoi d’un petit message d’abonnement côté serveur (optionnel) */
+  private sendMessage(message: string): void {
+    if (this.stomp?.connected) {
+      this.stomp.publish({ destination: '/app/subscribe', body: message });
+      console.log('📤 STOMP publish /app/subscribe');
+    } else {
+      console.warn('⚠️ STOMP non connecté');
+    }
+  }
+
+  // ============ Votre logique notifications/alertes (inchangée) ============
   private handleNotification(notification: NotificationMessage): void {
-    console.log('📨 Notification reçue:', notification);
-
-    // Ajouter à la liste des notifications
     this.notifications.unshift(notification);
+    if (this.notifications.length > 100) this.notifications = this.notifications.slice(0, 100);
 
-    // Limiter le nombre de notifications stockées
-    if (this.notifications.length > 100) {
-      this.notifications = this.notifications.slice(0, 100);
-    }
-
-    // Traitement spécifique selon le type
     switch (notification.type) {
-      case 'FRAUD_ALERT':
-        this.handleFraudAlert(notification);
-        break;
-      case 'ALERT_STATUS_UPDATE':
-        this.handleAlertStatusUpdate(notification);
-        break;
-      case 'STATISTICS_UPDATE':
-        this.handleStatisticsUpdate(notification);
-        break;
-      case 'WELCOME':
-        console.log('👋 Message de bienvenue reçu');
-        break;
-      case 'FRAUD_DETECTION':
-        this.handleFraudDetection(notification);
-        break;
-      default:
-        console.log('📋 Notification générique reçue:', notification.type);
+      case 'FRAUD_ALERT': this.handleFraudAlert(notification); break;
+      case 'ALERT_STATUS_UPDATE': this.handleAlertStatusUpdate(notification); break;
+      case 'STATISTICS_UPDATE': this.handleStatisticsUpdate(notification); break;
+      case 'WELCOME': console.log('👋 Message de bienvenue'); break;
+      case 'FRAUD_DETECTION': this.handleFraudDetection(notification); break;
+      default: console.log('📋 Notification:', notification.type);
     }
 
-    // Émettre la notification
     this.notificationsSubject.next(notification);
-
-    // Afficher une notification visuelle
     this.showVisualNotification(notification);
   }
 
-  /**
-   * ✅ AMÉLIORATION : Traitement amélioré des alertes de fraude
-   */
   private handleFraudAlert(notification: NotificationMessage): void {
-    if (notification.data) {
-      const alert: FraudAlert = {
-        id: notification.data.id || notification.data.alertId,
-        contractId: notification.data.contractId || 'UNKNOWN',
-        clientName: notification.data.clientName || 'Client inconnu',
-        fraudProbability: notification.data.fraudProbability || 0,
-        riskLevel: notification.data.riskLevel || 'UNKNOWN',
-        priority: notification.data.priority || 'MEDIUM',
-        alertStatus: notification.data.alertStatus || 'NEW',
-        timestamp: notification.data.timestamp || notification.timestamp,
-        detailedMessage: notification.data.detailedMessage,
-        suspiciousIndicators: notification.data.suspiciousIndicators || []
-      };
-
-      // Ajouter à la liste des alertes
-      this.alerts.unshift(alert);
-      this.alertsSubject.next([...this.alerts]);
-
-      console.log('🚨 Nouvelle alerte de fraude:', alert);
-
-      // ✅ NOUVEAU : Afficher une notification spéciale pour les alertes critiques
-      if (alert.priority === 'CRITICAL') {
-        this.showCriticalAlert(alert);
-      }
-    }
+    if (!notification.data) return;
+    const alert: FraudAlert = {
+      id: notification.data.id || notification.data.alertId,
+      contractId: notification.data.contractId || 'UNKNOWN',
+      clientName: notification.data.clientName || 'Client inconnu',
+      fraudProbability: notification.data.fraudProbability || 0,
+      riskLevel: notification.data.riskLevel || 'UNKNOWN',
+      priority: notification.data.priority || 'MEDIUM',
+      alertStatus: notification.data.alertStatus || 'NEW',
+      timestamp: notification.data.timestamp || notification.timestamp,
+      detailedMessage: notification.data.detailedMessage,
+      suspiciousIndicators: notification.data.suspiciousIndicators || []
+    };
+    this.alerts.unshift(alert);
+    this.alertsSubject.next([...this.alerts]);
+    if (alert.priority === 'CRITICAL') this.showCriticalAlert(alert);
   }
 
-  /**
-   * ✅ NOUVEAU : Traitement spécifique pour les détections de fraude
-   */
   private handleFraudDetection(notification: NotificationMessage): void {
-    console.log('🔍 Détection de fraude reçue:', notification);
-
-    // Créer une alerte à partir de la détection
-    if (notification.data && notification.data.prediction && notification.data.prediction.isFraud) {
-      const alert: FraudAlert = {
-        id: Date.now(), // ID temporaire
-        contractId: notification.data.contractData?.contractId || 'UNKNOWN',
-        clientName: notification.data.clientData?.firstName + ' ' + notification.data.clientData?.lastName || 'Client inconnu',
-        fraudProbability: notification.data.prediction.fraudProbability,
-        riskLevel: notification.data.prediction.riskLevel,
-        priority: this.calculatePriority(notification.data.prediction.fraudProbability),
-        alertStatus: 'NEW',
-        timestamp: notification.timestamp,
-        detailedMessage: `Fraude détectée avec une probabilité de ${(notification.data.prediction.fraudProbability * 100).toFixed(1)}%`,
-        suspiciousIndicators: []
-      };
-
-      this.alerts.unshift(alert);
-      this.alertsSubject.next([...this.alerts]);
-
-      console.log('🚨 Alerte créée à partir de la détection:', alert);
-    }
+    if (!(notification.data?.prediction?.isFraud)) return;
+    const alert: FraudAlert = {
+      id: Date.now(),
+      contractId: notification.data.contractData?.contractId || 'UNKNOWN',
+      clientName:
+        (notification.data.clientData?.firstName || '') + ' ' +
+        (notification.data.clientData?.lastName || ''),
+      fraudProbability: notification.data.prediction.fraudProbability,
+      riskLevel: notification.data.prediction.riskLevel,
+      priority: this.calculatePriority(notification.data.prediction.fraudProbability),
+      alertStatus: 'NEW',
+      timestamp: notification.timestamp,
+      detailedMessage:
+        `Fraude détectée ${(notification.data.prediction.fraudProbability * 100).toFixed(1)}%`,
+      suspiciousIndicators: []
+    };
+    this.alerts.unshift(alert);
+    this.alertsSubject.next([...this.alerts]);
   }
 
-  /**
-   * ✅ NOUVEAU : Calcule la priorité basée sur la probabilité de fraude
-   */
-  private calculatePriority(fraudProbability: number): string {
-    if (fraudProbability >= 0.9) return 'CRITICAL';
-    if (fraudProbability >= 0.75) return 'HIGH';
-    if (fraudProbability >= 0.5) return 'MEDIUM';
+  private calculatePriority(p: number): string {
+    if (p >= 0.9) return 'CRITICAL';
+    if (p >= 0.75) return 'HIGH';
+    if (p >= 0.5) return 'MEDIUM';
     return 'LOW';
   }
 
-  /**
-   * ✅ NOUVEAU : Affiche une alerte critique spéciale
-   */
   private showCriticalAlert(alert: FraudAlert): void {
-    // Afficher une notification persistante pour les alertes critiques
     if ('Notification' in window && Notification.permission === 'granted') {
-      const criticalNotification = new Notification('🚨 ALERTE FRAUDE CRITIQUE', {
-        body: `Contrat ${alert.contractId} - Probabilité: ${(alert.fraudProbability * 100).toFixed(1)}%`,
+      const n = new Notification('🚨 ALERTE FRAUDE CRITIQUE', {
+        body: `Contrat ${alert.contractId} - ${(alert.fraudProbability * 100).toFixed(1)}%`,
         icon: '/assets/icons/critical-alert.png',
         requireInteraction: true,
         tag: 'critical-fraud-alert'
       });
-
-      criticalNotification.onclick = () => {
-        window.focus();
-        // Naviguer vers la page des alertes
-        window.location.href = '/books/fraud-alerts';
-        criticalNotification.close();
-      };
+      n.onclick = () => { window.focus(); window.location.href = '/books/fraud-alerts'; n.close(); };
     }
-
-    // Log spécial pour les alertes critiques
     console.error('🚨🚨🚨 ALERTE CRITIQUE:', alert);
   }
 
-  /**
-   * Traite une mise à jour de statut d'alerte
-   */
   private handleAlertStatusUpdate(notification: NotificationMessage): void {
-    if (notification.data) {
-      const alertId = notification.data.alertId || notification.data.id;
-      const newStatus = notification.data.newStatus || notification.data.alertStatus;
-
-      // Mettre à jour l'alerte dans la liste
-      const alertIndex = this.alerts.findIndex(a => a.id === alertId);
-      if (alertIndex !== -1) {
-        this.alerts[alertIndex].alertStatus = newStatus;
-        this.alertsSubject.next([...this.alerts]);
-      }
-
-      console.log(`📝 Statut d'alerte mis à jour: ${alertId} -> ${newStatus}`);
+    const id = notification.data?.alertId ?? notification.data?.id;
+    const newStatus = notification.data?.newStatus ?? notification.data?.alertStatus;
+    if (!id || !newStatus) return;
+    const i = this.alerts.findIndex(a => a.id === id);
+    if (i !== -1) {
+      this.alerts[i].alertStatus = newStatus;
+      this.alertsSubject.next([...this.alerts]);
     }
   }
 
-  /**
-   * Traite une mise à jour des statistiques
-   */
   private handleStatisticsUpdate(notification: NotificationMessage): void {
-    console.log('📊 Statistiques mises à jour:', notification.data);
-    // Ici vous pouvez émettre vers un service de statistiques si nécessaire
+    console.log('📊 Stats maj:', notification.data);
   }
 
-  /**
-   * ✅ AMÉLIORATION : Notification visuelle améliorée
-   */
   private showVisualNotification(notification: NotificationMessage): void {
-    // Vérifier si les notifications du navigateur sont supportées et autorisées
     if ('Notification' in window && Notification.permission === 'granted') {
-      const options = {
+      const n = new Notification(notification.title, {
         body: notification.message,
         icon: this.getNotificationIcon(notification.priority),
         badge: '/assets/icons/fraud-alert-badge.png',
         tag: notification.type,
         requireInteraction: notification.priority === 'CRITICAL',
         data: notification.data
-      };
-
-      const browserNotification = new Notification(notification.title, options);
-
-      // Gérer le clic sur la notification
-      browserNotification.onclick = () => {
+      });
+      n.onclick = () => {
         window.focus();
-        if (notification.actionUrl) {
-          // Naviguer vers l'URL d'action si disponible
-          window.location.href = notification.actionUrl;
-        } else if (notification.type === 'FRAUD_ALERT') {
-          // Naviguer vers les alertes pour les alertes de fraude
-          window.location.href = '/books/fraud-alerts';
-        }
-        browserNotification.close();
+        if (notification.actionUrl) window.location.href = notification.actionUrl;
+        else if (notification.type === 'FRAUD_ALERT') window.location.href = '/books/fraud-alerts';
+        n.close();
       };
-
-      // Fermer automatiquement après 5 secondes (sauf pour les critiques)
-      if (notification.priority !== 'CRITICAL') {
-        setTimeout(() => {
-          browserNotification.close();
-        }, 5000);
-      }
+      if (notification.priority !== 'CRITICAL') setTimeout(() => n.close(), 5000);
     } else {
-      // Fallback : afficher dans la console si les notifications ne sont pas disponibles
       console.log(`🔔 ${notification.title}: ${notification.message}`);
     }
   }
 
-  /**
-   * Retourne l'icône appropriée selon la priorité
-   */
   private getNotificationIcon(priority: string): string {
-    switch (priority) {
-      case 'CRITICAL':
-        return '/assets/icons/critical-alert.png';
-      case 'HIGH':
-        return '/assets/icons/high-alert.png';
-      case 'MEDIUM':
-        return '/assets/icons/medium-alert.png';
-      default:
-        return '/assets/icons/info-alert.png';
-    }
+    if (priority === 'CRITICAL') return '/assets/icons/critical-alert.png';
+    if (priority === 'HIGH') return '/assets/icons/high-alert.png';
+    if (priority === 'MEDIUM') return '/assets/icons/medium-alert.png';
+    return '/assets/icons/info-alert.png';
   }
 
-  /**
-   * Envoie un message via WebSocket
-   */
-  private sendMessage(message: string): void {
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(message);
-      console.log('📤 Message envoyé:', message);
-    } else {
-      console.warn('⚠️ WebSocket non connecté, impossible d\'envoyer:', message);
-    }
-  }
+  // ===== API publique =====
+  getNotifications(): Observable<NotificationMessage> { return this.notificationsSubject.asObservable(); }
+  getConnectionStatus(): Observable<boolean> { return this.connectionStatusSubject.asObservable(); }
+  getAlerts(): Observable<FraudAlert[]> { return this.alertsSubject.asObservable(); }
+  getAllNotifications(): NotificationMessage[] { return [...this.notifications]; }
+  getAllAlerts(): FraudAlert[] { return [...this.alerts]; }
 
-  /**
-   * Obtient l'ID de l'utilisateur actuel
-   */
-  private getCurrentUserId(): string {
-    // Récupérer l'ID utilisateur depuis votre service d'authentification
-    return localStorage.getItem('userId') ||
-      sessionStorage.getItem('currentUser') ||
-      'user_' + Date.now();
-  }
-
-  // ===== MÉTHODES PUBLIQUES =====
-
-  /**
-   * Observable pour recevoir les notifications
-   */
-  getNotifications(): Observable<NotificationMessage> {
-    return this.notificationsSubject.asObservable();
-  }
-
-  /**
-   * Observable pour le statut de connexion
-   */
-  getConnectionStatus(): Observable<boolean> {
-    return this.connectionStatusSubject.asObservable();
-  }
-
-  /**
-   * Observable pour les alertes de fraude
-   */
-  getAlerts(): Observable<FraudAlert[]> {
-    return this.alertsSubject.asObservable();
-  }
-
-  /**
-   * Obtient toutes les notifications
-   */
-  getAllNotifications(): NotificationMessage[] {
-    return [...this.notifications];
-  }
-
-  /**
-   * Obtient toutes les alertes
-   */
-  getAllAlerts(): FraudAlert[] {
-    return [...this.alerts];
-  }
-
-  /**
-   * ✅ NOUVEAU : Simule une alerte de test (utile pour le développement)
-   */
   simulateTestAlert(): void {
     const testAlert: NotificationMessage = {
       type: 'FRAUD_ALERT',
       title: '🚨 Test - Alerte de Fraude',
-      message: 'Ceci est une alerte de test pour vérifier le système de notification',
+      message: 'Alerte de test',
       priority: 'HIGH',
       timestamp: new Date().toISOString(),
       data: {
@@ -409,103 +275,59 @@ export class NotificationService {
         priority: 'HIGH',
         alertStatus: 'NEW',
         timestamp: new Date().toISOString(),
-        detailedMessage: 'Alerte de test générée pour vérifier le fonctionnement du système'
+        detailedMessage: 'Alerte de test générée'
       }
     };
-
     this.handleNotification(testAlert);
   }
 
-  /**
-   * Marque une notification comme lue
-   */
-  markNotificationAsRead(notification: NotificationMessage): void {
-    console.log('✅ Notification marquée comme lue:', notification);
-    // Implémentation pour marquer comme lu
-  }
-
-  /**
-   * Supprime une notification
-   */
-  removeNotification(notification: NotificationMessage): void {
-    const index = this.notifications.indexOf(notification);
-    if (index > -1) {
-      this.notifications.splice(index, 1);
-      console.log('🗑️ Notification supprimée');
-    }
-  }
-
-  /**
-   * Demande la permission pour les notifications du navigateur
-   */
   async requestNotificationPermission(): Promise<NotificationPermission> {
-    if ('Notification' in window) {
-      const permission = await Notification.requestPermission();
-      console.log('🔔 Permission notifications:', permission);
-      return permission;
-    }
-    return Promise.resolve('denied');
+    if (!('Notification' in window)) return 'denied';
+    const permission = await Notification.requestPermission();
+    console.log('🔔 Permission notifications:', permission);
+    return permission;
   }
 
-  /**
-   * Reconnexion manuelle
-   */
   reconnect(): void {
     console.log('🔄 Reconnexion manuelle...');
-    if (this.socket) {
-      this.socket.close();
-    }
     this.reconnectAttempts = 0;
-    this.connect();
+    if (this.stomp) this.stomp.deactivate().finally(() => this.connect());
+    else this.connect();
   }
 
-  /**
-   * Ferme la connexion WebSocket
-   */
   disconnect(): void {
-    console.log('🔌 Déconnexion WebSocket...');
-    if (this.socket) {
-      this.socket.close();
-      this.socket = null;
-    }
+    console.log('🔌 Déconnexion STOMP...');
+    this.stomp?.deactivate();
+    this.stomp = undefined;
     this.connectionStatusSubject.next(false);
   }
 
-  /**
-   * Obtient le nombre de notifications non lues
-   */
   getUnreadNotificationsCount(): number {
-    return this.notifications.filter(n =>
-      n.priority === 'CRITICAL' || n.priority === 'HIGH'
-    ).length;
+    return this.notifications.filter(n => n.priority === 'CRITICAL' || n.priority === 'HIGH').length;
   }
 
-  /**
-   * Obtient les alertes critiques non traitées
-   */
   getCriticalAlerts(): FraudAlert[] {
-    return this.alerts.filter(alert =>
-      alert.priority === 'CRITICAL' &&
-      (alert.alertStatus === 'NEW' || alert.alertStatus === 'IN_REVIEW')
-    );
+    return this.alerts.filter(a => a.priority === 'CRITICAL' && (a.alertStatus === 'NEW' || a.alertStatus === 'IN_REVIEW'));
   }
 
-  /**
-   * ✅ NOUVEAU : Obtient les statistiques des alertes
-   */
-  getAlertStatistics() {
-    const total = this.alerts.length;
-    const critical = this.alerts.filter(a => a.priority === 'CRITICAL').length;
-    const high = this.alerts.filter(a => a.priority === 'HIGH').length;
-    const newAlerts = this.alerts.filter(a => a.alertStatus === 'NEW').length;
-
-    return {
-      total,
-      critical,
-      high,
-      newAlerts,
-      avgProbability: total > 0 ?
-        this.alerts.reduce((sum, a) => sum + a.fraudProbability, 0) / total : 0
-    };
+  /** Marque une notification comme lue (utilisé par NotificationPanel) */
+  public markNotificationAsRead(notification: NotificationMessage): void {
+    const i = this.notifications.indexOf(notification);
+    if (i > -1) {
+      this.notifications[i] = { ...this.notifications[i], read: true };
+    }
+    // Émet une maj pour que l’UI se rafraîchisse si elle écoute le flux
+    this.notificationsSubject.next({ ...notification, read: true });
   }
+
+  /** Supprime une notification (utilisé par NotificationPanel) */
+  public removeNotification(notification: NotificationMessage): void {
+    const i = this.notifications.indexOf(notification);
+    if (i > -1) {
+      this.notifications.splice(i, 1);
+    }
+    // Pas d’émission obligatoire, l’UI relira via getAllNotifications() si besoin
+  }
+
+
 }

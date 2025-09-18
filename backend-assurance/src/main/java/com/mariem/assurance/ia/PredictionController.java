@@ -20,7 +20,7 @@ public class PredictionController {
 
         if (assure == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Assuré non trouvé avec le numéro de contrat : " + numContrat);
+                    .body("AssurÃ© non trouvÃ© avec le numÃ©ro de contrat : " + numContrat);
         }
 
         DonneesInput input = IaUtils.fromAssure(assure);
@@ -33,7 +33,7 @@ public class PredictionController {
             return ResponseEntity.ok(response.getBody());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Erreur lors de la prédiction : " + e.getMessage());
+                    .body("Erreur lors de la prÃ©diction : " + e.getMessage());
         }
     }
 }

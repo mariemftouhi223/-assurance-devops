@@ -120,14 +120,17 @@
             <i class="fas fa-search"></i>
           </button>
         </div>
-        <div class="col-md-3 text-end">
-          <div class="btn-group w-100">
-            <button class="btn btn-success" (click)="createAssure({})">
-              <i class="fas fa-plus-circle"></i> Ajouter
-            </button>
-            <button class="btn btn-outline-secondary" (click)="resetFilters()">
-              <i class="fas fa-filter"></i> Reset
-            </button>
+
+        <!-- Filtre score ≥ threshold -->
+        <div class="col-md-3 d-flex align-items-center justify-content-end">
+          <div class="form-check">
+            <input
+              id="chk50"
+              class="form-check-input"
+              type="checkbox"
+              [(ngModel)]="showOnlyHigh"
+              (change)="onHighToggle()">
+            <label for="chk50" class="form-check-label">Afficher score ≥ {{ riskThreshold }}%</label>
           </div>
         </div>
       </div>
@@ -147,7 +150,7 @@
     <!-- ========== /ERREUR / LOADER ========== -->
 
     <!-- ========== TABLEAU ========== -->
-    <div *ngIf="!isLoading && assures.length > 0" class="assures-table-scroll mt-3">
+    <div *ngIf="!isLoading && tableData.length > 0" class="assures-table-scroll mt-3">
       <table class="table table-bordered table-striped table-hover assures-table">
         <thead class="table-dark">
         <tr>
@@ -218,12 +221,13 @@
         </thead>
 
         <tbody>
-        <tr *ngFor="let a of assures; trackBy: trackByAssure">
+        <!-- IMPORTANT: tableData (peut être filtré) -->
+        <tr *ngFor="let a of tableData; trackBy: trackByAssure">
           <!-- Badge ML -->
           <td class="text-center sticky-col fraud-status-cell">
             <div class="fraud-indicator"
                  [style.background-color]="getFraudColor(a.numContrat)"
-                 (click)="showFraudDetails(a)">
+                 (click)="openDetails(a)">
               <i [class]="getFraudIcon(a.numContrat)" [style.color]="getFraudColor(a.numContrat)"></i>
               <div class="fraud-percentage">{{ getFraudScore(a.numContrat) }}%</div>
               <div class="risk-badge" [ngClass]="'risk-' + getRiskLevel(a.numContrat).toLowerCase()">
@@ -293,13 +297,8 @@
           <!-- Actions -->
           <td class="text-center">
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-warning" (click)="updateAssure(a)" title="Modifier">
-                <i class="fas fa-edit"></i>
-              </button>
-              <button class="btn btn-outline-danger" (click)="deleteAssure(a.numContrat)" title="Supprimer">
-                <i class="fas fa-trash"></i>
-              </button>
-              <button class="btn btn-outline-primary" (click)="showContractDetails(a)" title="Détails">
+              <!-- (update/delete retirés) -->
+              <button class="btn btn-outline-primary" (click)="openDetails(a)" title="Détails">
                 <i class="fas fa-eye"></i>
               </button>
             </div>
@@ -310,7 +309,7 @@
     </div>
 
     <!-- AUCUN RÉSULTAT -->
-    <div *ngIf="!isLoading && assures.length === 0" class="text-center my-5">
+    <div *ngIf="!isLoading && tableData.length === 0" class="text-center my-5">
       <div class="no-results">
         <i class="fas fa-search fa-3x text-muted mb-3"></i>
         <h4 class="text-muted">Aucun assuré trouvé</h4>
@@ -389,43 +388,65 @@
             <span class="text-muted ms-2">Score &lt; 40% – Contrat légitime</span>
           </div>
         </div>
-
-        <hr class="my-4" />
-
-        <h6 class="mb-2"><i class="fas fa-scale-balanced me-2"></i>Règles ML Spécifiques aux Assurés :</h6>
-        <ul class="mb-4 text-muted">
-          <li><strong>Primes disproportionnées</strong> : Frais disproportionnés par rapport à la prime</li>
-          <li><strong>Garanties nombreuses</strong> : Trop de garanties pour un véhicule de faible valeur</li>
-          <li><strong>Contrats corporels</strong> : Montants élevés avec circonstances douteuses</li>
-          <li><strong>Historique suspect</strong> : Patterns anormaux dans les données contractuelles</li>
-          <li><strong>Valeurs incohérentes</strong> : Écarts importants entre valeur catalogue et vénale</li>
-        </ul>
-
-        <div class="row g-3">
-          <div class="col-lg-6">
-            <div class="actions-box">
-              <h6 class="mb-2 text-danger">🔎 Actions Recommandées — <span class="fw-bold">CRITICAL/HIGH</span> :</h6>
-              <ul class="mb-0">
-                <li>Enquête immédiate</li>
-                <li>Suspension temporaire</li>
-                <li>Vérification des documents</li>
-              </ul>
-            </div>
-          </div>
-          <div class="col-lg-6">
-            <div class="actions-box">
-              <h6 class="mb-2 text-primary">🛡️ <span class="fw-bold">MEDIUM</span> :</h6>
-              <ul class="mb-0">
-                <li>Surveillance renforcée</li>
-                <li>Contrôles périodiques</li>
-                <li>Validation manuelle</li>
-              </ul>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
     <!-- ========== /LÉGENDE ML ========== -->
 
+  </div>
+</div>
+
+<!-- ========== MODAL DÉTAILS ========== -->
+<div class="modal-backdrop fade show" *ngIf="detailOpen" style="display:block;"></div>
+<div class="modal fade show" tabindex="-1" *ngIf="detailOpen" style="display:block;">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Détails du risque — Contrat {{ selected?.numContrat }}</h5>
+        <button type="button" class="btn-close" (click)="closeDetails()"></button>
+      </div>
+
+      <div class="modal-body" *ngIf="selected as s">
+        <div class="d-flex align-items-center mb-3">
+          <div class="display-6 fw-bold me-3">{{ getSelectedScore() }}%</div>
+          <span class="badge" [ngClass]="riskClass(s.fraudDetection?.riskLevel)">
+            {{ s.fraudDetection?.riskLevel || 'NORMAL' }}
+          </span>
+        </div>
+
+        <div class="progress mb-3" style="height:10px;">
+          <div class="progress-bar"
+               [class]="riskClass(s.fraudDetection?.riskLevel)"
+               [style.width.%]="getSelectedScore()"></div>
+        </div>
+
+        <p class="text-muted">
+          <strong>Raison :</strong> {{ s.fraudDetection?.reason || 'Analyse ML' }}<br>
+          <strong>Probabilité ML :</strong>
+          {{ (s.fraudDetection?.prediction?.fraudProbability ?? 0) * 100 | number:'1.0-0' }}%
+        </p>
+
+        <ng-container *ngIf="s.fraudDetection?.riskFactors?.length">
+          <h6 class="mb-2">Signaux clés</h6>
+          <ul class="mb-3">
+            <li *ngFor="let r of s.fraudDetection?.riskFactors">{{ r }}</li>
+          </ul>
+        </ng-container>
+
+        <h6 class="mb-2">Infos contrat</h6>
+        <div class="row">
+          <div class="col-6"><small class="text-muted">Effet</small><div>{{ formatDate(s.effetContrat) }}</div></div>
+          <div class="col-6"><small class="text-muted">Validité Du</small><div>{{ formatDate(s.validiteDu) }}</div></div>
+          <div class="col-6"><small class="text-muted">Validité Au</small><div>{{ formatDate(s.validiteAu) }}</div></div>
+          <div class="col-6"><small class="text-muted">Prochain Terme</small><div>{{ formatDate(s.prochainTerme) }}</div></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" (click)="closeDetails()">Fermer</button>
+        <button class="btn btn-primary" (click)="createCaseFromSelection()">
+          <i class="fas fa-briefcase me-1"></i> Créer un cas
+        </button>
+      </div>
+    </div>
   </div>
 </div>

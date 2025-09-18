@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 import java.text.SimpleDateFormat;
 
-// ✅ CLASSES AJOUTÉES POUR LA DÉTECTION DE FRAUDE ML
+// âœ… CLASSES AJOUTÃ‰ES POUR LA DÃ‰TECTION DE FRAUDE ML
 class FraudPredictionRequest {
     private Map<String, Object> sinistreData;
     private Map<String, Object> contractData;
@@ -49,13 +49,13 @@ class FraudPredictionResponse {
 
     private String generateRecommendation(boolean isFraud, double confidence) {
         if (isFraud && confidence > 0.8) {
-            return "URGENT: Vérification manuelle immédiate requise";
+            return "URGENT: VÃ©rification manuelle immÃ©diate requise";
         } else if (isFraud && confidence > 0.6) {
-            return "Vérification recommandée dans les 24h";
+            return "VÃ©rification recommandÃ©e dans les 24h";
         } else if (isFraud) {
-            return "Surveillance renforcée recommandée";
+            return "Surveillance renforcÃ©e recommandÃ©e";
         }
-        return "Aucune action particulière requise";
+        return "Aucune action particuliÃ¨re requise";
     }
 
     // Getters et setters
@@ -91,7 +91,7 @@ public class SinistreController {
 
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
 
-    // ✅ ENDPOINT PRINCIPAL MODIFIÉ AVEC DÉTECTION ML
+    // âœ… ENDPOINT PRINCIPAL MODIFIÃ‰ AVEC DÃ‰TECTION ML
     @GetMapping("/all")
     @PreAuthorize("permitAll()")
     public ResponseEntity<Map<String, Object>> getAllSinistres(
@@ -101,7 +101,7 @@ public class SinistreController {
             @RequestParam(defaultValue = "desc") String sortDirection) {
 
         try {
-            System.out.println("🔍 Récupération des sinistres avec ML - page: " + page + ", size: " + size);
+            System.out.println("ðŸ” RÃ©cupÃ©ration des sinistres avec ML - page: " + page + ", size: " + size);
 
             Sort sort = Sort.by(
                     sortDirection.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC,
@@ -111,30 +111,30 @@ public class SinistreController {
             Pageable pageable = PageRequest.of(page, size, sort);
             Page<Sinistre> sinistresPage = sinistreRepository.findAll(pageable);
 
-            // ✅ TRANSFORMATION DES DONNÉES AVEC AJOUT ML
+            // âœ… TRANSFORMATION DES DONNÃ‰ES AVEC AJOUT ML
             List<Map<String, Object>> sinistresFormates = new ArrayList<>();
 
             for (Sinistre sinistre : sinistresPage.getContent()) {
                 Map<String, Object> sinistreFormate = new HashMap<>();
 
-                // ✅ COLONNES PRINCIPALES (VOTRE CODE EXISTANT)
+                // âœ… COLONNES PRINCIPALES (VOTRE CODE EXISTANT)
                 sinistreFormate.put("numSinistre", sinistre.getNumSinistre());
                 sinistreFormate.put("anneeExercice", sinistre.getAnneeExercice());
                 sinistreFormate.put("numContrat", sinistre.getNumContrat());
 
-                // ✅ DATES FORMATÉES (VOTRE CODE EXISTANT)
+                // âœ… DATES FORMATÃ‰ES (VOTRE CODE EXISTANT)
                 sinistreFormate.put("effetContrat", sinistre.getEffetContrat() != null ?
-                        dateFormat.format(sinistre.getEffetContrat()) : "Non défini");
+                        dateFormat.format(sinistre.getEffetContrat()) : "Non dÃ©fini");
                 sinistreFormate.put("dateExpiration", sinistre.getDateExpiration());
                 sinistreFormate.put("prochainTerme", sinistre.getProchainTerme());
                 sinistreFormate.put("dateDeclaration", sinistre.getDateDeclaration() != null ?
-                        dateFormat.format(sinistre.getDateDeclaration()) : "Non défini");
+                        dateFormat.format(sinistre.getDateDeclaration()) : "Non dÃ©fini");
                 sinistreFormate.put("dateOuverture", sinistre.getDateOuverture() != null ?
-                        dateFormat.format(sinistre.getDateOuverture()) : "Non défini");
+                        dateFormat.format(sinistre.getDateOuverture()) : "Non dÃ©fini");
                 sinistreFormate.put("dateSurvenance", sinistre.getDateSurvenance() != null ?
-                        dateFormat.format(sinistre.getDateSurvenance()) : "Non défini");
+                        dateFormat.format(sinistre.getDateSurvenance()) : "Non dÃ©fini");
 
-                // ✅ INFORMATIONS DESCRIPTIVES (VOTRE CODE EXISTANT)
+                // âœ… INFORMATIONS DESCRIPTIVES (VOTRE CODE EXISTANT)
                 sinistreFormate.put("usage", sinistre.getUsage());
                 sinistreFormate.put("typeUsage", sinistre.getTypeUsage());
                 sinistreFormate.put("codeIntermediaire", sinistre.getCodeIntermediaire());
@@ -147,14 +147,14 @@ public class SinistreController {
                 sinistreFormate.put("compagnieAdverse", sinistre.getCompagnieAdverse());
                 sinistreFormate.put("codeResponsabilite", sinistre.getCodeResponsabilite());
 
-                // ✅ ÉTAT ET STATUT (VOTRE CODE EXISTANT)
+                // âœ… Ã‰TAT ET STATUT (VOTRE CODE EXISTANT)
                 sinistreFormate.put("libEtatSinistre", sinistre.getLibEtatSinistre());
                 sinistreFormate.put("etatAvecCouleur", sinistre.getEtatAvecCouleur());
                 sinistreFormate.put("etatSinAnnee", sinistre.getEtatSinAnnee());
                 sinistreFormate.put("priorite", sinistre.getPriorite());
                 sinistreFormate.put("ageSinistreEnJours", sinistre.getAgeSinistreEnJours());
 
-                // ✅ MONTANTS FORMATÉS (VOTRE CODE EXISTANT)
+                // âœ… MONTANTS FORMATÃ‰S (VOTRE CODE EXISTANT)
                 sinistreFormate.put("montantEvaluation", sinistre.getMontantEvaluationFormate());
                 sinistreFormate.put("montantEvaluationBrut", sinistre.getMontantEvaluation());
                 sinistreFormate.put("totalReglement", sinistre.getTotalReglementFormate());
@@ -166,17 +166,17 @@ public class SinistreController {
                 sinistreFormate.put("sapDefenseEtRecours", sinistre.getSapDefenseEtRecours());
                 sinistreFormate.put("cumulReglement", sinistre.getCumulReglement());
 
-                // ✅ PROVISIONS ET PRÉVISIONS (VOTRE CODE EXISTANT)
+                // âœ… PROVISIONS ET PRÃ‰VISIONS (VOTRE CODE EXISTANT)
                 sinistreFormate.put("provisionDeRecours", sinistre.getProvisionDeRecours());
                 sinistreFormate.put("provisionDeRecoursDefenseEtRecours", sinistre.getProvisionDeRecoursDefenseEtRecours());
                 sinistreFormate.put("previsionDeRecoursDomVeh", sinistre.getPrevisionDeRecoursDomVeh());
                 sinistreFormate.put("cumulPrevisionDeRecours", sinistre.getCumulPrevisionDeRecours());
 
-                // ✅ INFORMATIONS SUPPLÉMENTAIRES (VOTRE CODE EXISTANT)
+                // âœ… INFORMATIONS SUPPLÃ‰MENTAIRES (VOTRE CODE EXISTANT)
                 sinistreFormate.put("nombreBlesses", sinistre.getNombreBlesses());
                 sinistreFormate.put("nombreDeces", sinistre.getNombreDeces());
 
-                // ✅ NOUVEAU : DÉTECTION DE FRAUDE ML AJOUTÉE
+                // âœ… NOUVEAU : DÃ‰TECTION DE FRAUDE ML AJOUTÃ‰E
                 FraudPredictionResponse fraudResult = analyzerFraudeSinistre(sinistre);
                 sinistreFormate.put("fraudDetection", Map.of(
                         "isFraud", fraudResult.isFraud(),
@@ -204,14 +204,14 @@ public class SinistreController {
             response.put("hasNext", sinistresPage.hasNext());
             response.put("hasPrevious", sinistresPage.hasPrevious());
             response.put("status", "success");
-            response.put("message", sinistresPage.getTotalElements() + " sinistres analysés avec ML");
+            response.put("message", sinistresPage.getTotalElements() + " sinistres analysÃ©s avec ML");
 
-            System.out.println("✅ " + sinistresPage.getTotalElements() + " sinistres formatés avec détection ML");
+            System.out.println("âœ… " + sinistresPage.getTotalElements() + " sinistres formatÃ©s avec dÃ©tection ML");
 
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            System.err.println("❌ Erreur lors de la récupération des sinistres: " + e.getMessage());
+            System.err.println("âŒ Erreur lors de la rÃ©cupÃ©ration des sinistres: " + e.getMessage());
             e.printStackTrace();
 
             Map<String, Object> errorResponse = new HashMap<>();
@@ -224,12 +224,12 @@ public class SinistreController {
         }
     }
 
-    // ✅ RECHERCHE MODIFIÉE AVEC AJOUT ML
+    // âœ… RECHERCHE MODIFIÃ‰E AVEC AJOUT ML
     @PostMapping("/search")
     @PreAuthorize("permitAll()")
     public ResponseEntity<Map<String, Object>> searchSinistres(@RequestBody SinistreSearchCriteria criteria) {
         try {
-            System.out.println("🔍 Recherche avancée avec ML: " + new ObjectMapper().writeValueAsString(criteria));
+            System.out.println("ðŸ” Recherche avancÃ©e avec ML: " + new ObjectMapper().writeValueAsString(criteria));
 
             if (criteria.getPage() == null) criteria.setPage(0);
             if (criteria.getSize() == null) criteria.setSize(20);
@@ -238,7 +238,7 @@ public class SinistreController {
 
             Page<Sinistre> sinistresPage = searchService.searchSinistres(criteria);
 
-            // ✅ TRANSFORMATION AVEC AJOUT ML
+            // âœ… TRANSFORMATION AVEC AJOUT ML
             List<Map<String, Object>> sinistresFormates = new ArrayList<>();
 
             for (Sinistre sinistre : sinistresPage.getContent()) {
@@ -256,14 +256,14 @@ public class SinistreController {
             response.put("hasNext", sinistresPage.hasNext());
             response.put("hasPrevious", sinistresPage.hasPrevious());
             response.put("status", "success");
-            response.put("message", sinistresPage.getTotalElements() + " sinistres trouvés avec ML");
+            response.put("message", sinistresPage.getTotalElements() + " sinistres trouvÃ©s avec ML");
 
-            System.out.println("✅ Recherche terminée: " + sinistresPage.getTotalElements() + " résultats avec ML");
+            System.out.println("âœ… Recherche terminÃ©e: " + sinistresPage.getTotalElements() + " rÃ©sultats avec ML");
 
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            System.err.println("❌ Erreur lors de la recherche avec ML: " + e.getMessage());
+            System.err.println("âŒ Erreur lors de la recherche avec ML: " + e.getMessage());
             e.printStackTrace();
 
             Map<String, Object> errorResponse = new HashMap<>();
@@ -276,12 +276,12 @@ public class SinistreController {
         }
     }
 
-    // ✅ NOUVEAU ENDPOINT POUR L'ANALYSE DE FRAUDE ML
+    // âœ… NOUVEAU ENDPOINT POUR L'ANALYSE DE FRAUDE ML
     @PostMapping("/analyze-fraud")
     @PreAuthorize("permitAll()")
     public ResponseEntity<FraudPredictionResponse> analyzeFraud(@RequestBody FraudPredictionRequest request) {
         try {
-            System.out.println("🤖 Analyse de fraude ML pour sinistre");
+            System.out.println("ðŸ¤– Analyse de fraude ML pour sinistre");
 
             Map<String, Object> sinistreData = request.getSinistreData();
             String numSinistre = (String) sinistreData.get("numSinistre");
@@ -292,7 +292,7 @@ public class SinistreController {
                 Sinistre sinistre = sinistreOpt.get();
                 FraudPredictionResponse result = analyzerFraudeSinistre(sinistre);
 
-                System.out.println("✅ Analyse ML terminée - Fraude: " + result.isFraud() +
+                System.out.println("âœ… Analyse ML terminÃ©e - Fraude: " + result.isFraud() +
                         ", Confiance: " + (result.getConfidence() * 100) + "%");
 
                 return ResponseEntity.ok(result);
@@ -301,7 +301,7 @@ public class SinistreController {
             }
 
         } catch (Exception e) {
-            System.err.println("❌ Erreur lors de l'analyse de fraude: " + e.getMessage());
+            System.err.println("âŒ Erreur lors de l'analyse de fraude: " + e.getMessage());
             e.printStackTrace();
 
             FraudPredictionResponse errorResponse = new FraudPredictionResponse(
@@ -312,12 +312,12 @@ public class SinistreController {
         }
     }
 
-    // ✅ NOUVEAU ENDPOINT POUR LES STATISTIQUES DE FRAUDE
+    // âœ… NOUVEAU ENDPOINT POUR LES STATISTIQUES DE FRAUDE
     @GetMapping("/fraud-statistics")
     @PreAuthorize("permitAll()")
     public ResponseEntity<Map<String, Object>> getFraudStatistics() {
         try {
-            System.out.println("📊 Génération des statistiques de fraude");
+            System.out.println("ðŸ“Š GÃ©nÃ©ration des statistiques de fraude");
 
             List<Sinistre> allSinistres = sinistreRepository.findAll();
 
@@ -353,17 +353,17 @@ public class SinistreController {
             stats.put("totalFraudAmount", totalFraudAmount);
             stats.put("averageFraudAmount", fraudulentCount > 0 ? (totalFraudAmount / fraudulentCount) : 0);
 
-            System.out.println("✅ Statistiques de fraude générées: " + fraudulentCount + "/" + totalSinistres + " cas détectés");
+            System.out.println("âœ… Statistiques de fraude gÃ©nÃ©rÃ©es: " + fraudulentCount + "/" + totalSinistres + " cas dÃ©tectÃ©s");
 
             return ResponseEntity.ok(stats);
 
         } catch (Exception e) {
-            System.err.println("❌ Erreur lors de la génération des statistiques de fraude: " + e.getMessage());
+            System.err.println("âŒ Erreur lors de la gÃ©nÃ©ration des statistiques de fraude: " + e.getMessage());
             return ResponseEntity.status(500).build();
         }
     }
 
-    // ✅ MÉTHODES ML AJOUTÉES
+    // âœ… MÃ‰THODES ML AJOUTÃ‰ES
 
     /**
      * Analyse de fraude ML pour un sinistre
@@ -384,23 +384,23 @@ public class SinistreController {
             return response;
 
         } catch (Exception e) {
-            System.err.println("❌ Erreur dans l'analyse ML: " + e.getMessage());
+            System.err.println("âŒ Erreur dans l'analyse ML: " + e.getMessage());
             return new FraudPredictionResponse(false, 0.0, "ERROR", "Erreur d'analyse");
         }
     }
 
     /**
-     * Calcul du score de fraude basé sur vos données
+     * Calcul du score de fraude basÃ© sur vos donnÃ©es
      */
     private double calculateFraudScore(Sinistre sinistre) {
         double score = 0.0;
 
-        // FACTEUR 1: Montant anormalement élevé
+        // FACTEUR 1: Montant anormalement Ã©levÃ©
         if (sinistre.getMontantEvaluation() != null && sinistre.getMontantEvaluation() > 50000) {
             score += 0.3;
         }
 
-        // FACTEUR 2: Délai suspect entre survenance et déclaration
+        // FACTEUR 2: DÃ©lai suspect entre survenance et dÃ©claration
         if (sinistre.getDateSurvenance() != null && sinistre.getDateDeclaration() != null) {
             long delaiJours = (sinistre.getDateDeclaration().getTime() - sinistre.getDateSurvenance().getTime())
                     / (24 * 60 * 60 * 1000);
@@ -409,19 +409,19 @@ public class SinistreController {
             }
         }
 
-        // FACTEUR 3: Nature corporelle avec montant élevé
+        // FACTEUR 3: Nature corporelle avec montant Ã©levÃ©
         if ("CORPOREL".equals(sinistre.getNatureSinistre()) &&
                 sinistre.getMontantEvaluation() != null && sinistre.getMontantEvaluation() > 30000) {
             score += 0.25;
         }
 
-        // FACTEUR 4: Sinistre très récent avec montant élevé
+        // FACTEUR 4: Sinistre trÃ¨s rÃ©cent avec montant Ã©levÃ©
         if (sinistre.getAgeSinistreEnJours() < 7 &&
                 sinistre.getMontantEvaluation() != null && sinistre.getMontantEvaluation() > 20000) {
             score += 0.15;
         }
 
-        // FACTEUR 5: Règlement supérieur à l'évaluation
+        // FACTEUR 5: RÃ¨glement supÃ©rieur Ã  l'Ã©valuation
         if (sinistre.getTotalReglement() != null && sinistre.getMontantEvaluation() != null &&
                 sinistre.getTotalReglement() > sinistre.getMontantEvaluation() * 1.2) {
             score += 0.2;
@@ -434,7 +434,7 @@ public class SinistreController {
             score += 0.15;
         }
 
-        // FACTEUR 7: Provisions de recours anormalement élevées
+        // FACTEUR 7: Provisions de recours anormalement Ã©levÃ©es
         if (sinistre.getProvisionDeRecours() != null && sinistre.getProvisionDeRecours() > 15000) {
             score += 0.1;
         }
@@ -452,39 +452,39 @@ public class SinistreController {
 
     private String generateFraudReason(Sinistre sinistre, double fraudScore) {
         if (fraudScore > 0.8) {
-            return "Multiples indicateurs de fraude détectés - Vérification urgente requise";
+            return "Multiples indicateurs de fraude dÃ©tectÃ©s - VÃ©rification urgente requise";
         } else if (fraudScore > 0.6) {
-            return "Indicateurs de fraude significatifs - Investigation recommandée";
+            return "Indicateurs de fraude significatifs - Investigation recommandÃ©e";
         } else if (fraudScore > 0.4) {
-            return "Anomalies détectées - Surveillance renforcée";
+            return "Anomalies dÃ©tectÃ©es - Surveillance renforcÃ©e";
         } else if (fraudScore > 0.2) {
-            return "Légers indicateurs de risque - Suivi standard";
+            return "LÃ©gers indicateurs de risque - Suivi standard";
         }
-        return "Profil normal - Aucune anomalie détectée";
+        return "Profil normal - Aucune anomalie dÃ©tectÃ©e";
     }
 
     private List<String> identifyRiskFactors(Sinistre sinistre, double fraudScore) {
         List<String> factors = new ArrayList<>();
 
         if (sinistre.getMontantEvaluation() != null && sinistre.getMontantEvaluation() > 50000) {
-            factors.add("Montant d'évaluation très élevé (" + sinistre.getMontantEvaluationFormate() + ")");
+            factors.add("Montant d'Ã©valuation trÃ¨s Ã©levÃ© (" + sinistre.getMontantEvaluationFormate() + ")");
         }
 
         if (sinistre.getDateSurvenance() != null && sinistre.getDateDeclaration() != null) {
             long delaiJours = (sinistre.getDateDeclaration().getTime() - sinistre.getDateSurvenance().getTime())
                     / (24 * 60 * 60 * 1000);
             if (delaiJours > 30) {
-                factors.add("Délai de déclaration suspect (" + delaiJours + " jours)");
+                factors.add("DÃ©lai de dÃ©claration suspect (" + delaiJours + " jours)");
             }
         }
 
         if ("CORPOREL".equals(sinistre.getNatureSinistre()) &&
                 sinistre.getMontantEvaluation() != null && sinistre.getMontantEvaluation() > 30000) {
-            factors.add("Sinistre corporel avec montant élevé");
+            factors.add("Sinistre corporel avec montant Ã©levÃ©");
         }
 
         if (sinistre.getCompagnieAdverse() == null || sinistre.getCompagnieAdverse().trim().isEmpty()) {
-            factors.add("Compagnie adverse non identifiée");
+            factors.add("Compagnie adverse non identifiÃ©e");
         }
 
         if (factors.isEmpty()) {
@@ -516,17 +516,17 @@ public class SinistreController {
     }
 
     /**
-     * Méthode utilitaire pour formater un sinistre avec ML
+     * MÃ©thode utilitaire pour formater un sinistre avec ML
      */
     private Map<String, Object> formatSinistreWithML(Sinistre sinistre) {
         Map<String, Object> sinistreFormate = new HashMap<>();
 
-        // Toutes vos données existantes
+        // Toutes vos donnÃ©es existantes
         sinistreFormate.put("numSinistre", sinistre.getNumSinistre());
         sinistreFormate.put("anneeExercice", sinistre.getAnneeExercice());
         sinistreFormate.put("numContrat", sinistre.getNumContrat());
         sinistreFormate.put("dateDeclaration", sinistre.getDateDeclaration() != null ?
-                dateFormat.format(sinistre.getDateDeclaration()) : "Non défini");
+                dateFormat.format(sinistre.getDateDeclaration()) : "Non dÃ©fini");
         sinistreFormate.put("natureSinistre", sinistre.getNatureSinistre());
         sinistreFormate.put("typeSinistre", sinistre.getTypeSinistre());
         sinistreFormate.put("libEtatSinistre", sinistre.getLibEtatSinistre());
@@ -553,21 +553,21 @@ public class SinistreController {
         return sinistreFormate;
     }
 
-    // ✅ VOS ENDPOINTS EXISTANTS CONSERVÉS (statistiques/avancees, health, test, etc.)
+    // âœ… VOS ENDPOINTS EXISTANTS CONSERVÃ‰S (statistiques/avancees, health, test, etc.)
 
     @GetMapping("/statistiques/avancees")
     @PreAuthorize("permitAll()")
     public ResponseEntity<Map<String, Object>> getStatistiquesAvancees() {
         try {
-            System.out.println("📊 Génération des statistiques avancées");
+            System.out.println("ðŸ“Š GÃ©nÃ©ration des statistiques avancÃ©es");
 
             Map<String, Object> stats = new HashMap<>();
 
-            // Statistiques générales
+            // Statistiques gÃ©nÃ©rales
             long totalSinistres = sinistreRepository.count();
             stats.put("totalSinistres", totalSinistres);
 
-            // Répartition par nature
+            // RÃ©partition par nature
             long corporel = sinistreRepository.countByNatureSinistre("CORPOREL");
             long materiel = sinistreRepository.countByNatureSinistre("MATERIEL");
             long mixte = sinistreRepository.countByNatureSinistre("MIXTE");
@@ -578,7 +578,7 @@ public class SinistreController {
             repartitionNature.put("mixte", mixte);
             stats.put("repartitionNature", repartitionNature);
 
-            // Répartition par état
+            // RÃ©partition par Ã©tat
             long miseAJour = sinistreRepository.countByLibEtatSinistre("MISE A JOUR");
             long reprise = sinistreRepository.countByLibEtatSinistre("REPRISE");
             long reouverture = sinistreRepository.countByLibEtatSinistre("REOUVERTURE");
@@ -591,11 +591,11 @@ public class SinistreController {
             repartitionEtat.put("cloture", cloture);
             stats.put("repartitionEtat", repartitionEtat);
 
-            System.out.println("✅ Statistiques avancées générées");
+            System.out.println("âœ… Statistiques avancÃ©es gÃ©nÃ©rÃ©es");
             return ResponseEntity.ok(stats);
 
         } catch (Exception e) {
-            System.err.println("❌ Erreur lors de la génération des statistiques: " + e.getMessage());
+            System.err.println("âŒ Erreur lors de la gÃ©nÃ©ration des statistiques: " + e.getMessage());
             return ResponseEntity.status(500).build();
         }
     }
@@ -605,9 +605,9 @@ public class SinistreController {
     public ResponseEntity<String> healthCheck() {
         try {
             long count = sinistreRepository.count();
-            return ResponseEntity.ok("Service Sinistres avec ML opérationnel - " + count + " sinistres en base");
+            return ResponseEntity.ok("Service Sinistres avec ML opÃ©rationnel - " + count + " sinistres en base");
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Erreur de connexion à la base de données: " + e.getMessage());
+            return ResponseEntity.status(500).body("Erreur de connexion Ã  la base de donnÃ©es: " + e.getMessage());
         }
     }
 
@@ -616,7 +616,7 @@ public class SinistreController {
     public ResponseEntity<Map<String, Object>> testCors() {
         Map<String, Object> response = new HashMap<>();
         response.put("status", "success");
-        response.put("message", "CORS fonctionne correctement avec détection ML");
+        response.put("message", "CORS fonctionne correctement avec dÃ©tection ML");
         response.put("timestamp", System.currentTimeMillis());
         response.put("endpoint", "/api/v1/sinistres/test");
         response.put("mlEnabled", true);
@@ -633,7 +633,7 @@ public class SinistreController {
     @PostMapping
     public ResponseEntity<Sinistre> createSinistre(@RequestBody Sinistre sinistre) {
         if (sinistreRepository.existsById(sinistre.getNumSinistre())) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build(); // déjà existe
+            return ResponseEntity.status(HttpStatus.CONFLICT).build(); // dÃ©jÃ  existe
         }
         Sinistre saved = sinistreRepository.save(sinistre);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
@@ -706,18 +706,18 @@ public class SinistreController {
                         .body(Map.of("error", "numSinistre requis"));
             }
 
-            // 2) Construire l'entité
+            // 2) Construire l'entitÃ©
             Sinistre s = new Sinistre();
             s.setNumSinistre(numSinistre);
 
-            // --- Identifiants / numéros ---
+            // --- Identifiants / numÃ©ros ---
             s.setNumContrat(str(payload.get("numContrat")));
             s.setAnneeExercice(intOrNull(payload.get("anneeExercice")));
 
-            // --- Dates (types selon l'entité) ---
+            // --- Dates (types selon l'entitÃ©) ---
             // effetContrat: java.util.Date
             s.setEffetContrat(dateOrNull(payload.get("effetContrat")));
-            // dateExpiration / prochainTerme: String dans l'entité
+            // dateExpiration / prochainTerme: String dans l'entitÃ©
             s.setDateExpiration(str(payload.get("dateExpiration")));
             s.setProchainTerme(str(payload.get("prochainTerme")));
             // Dates sinistre (java.util.Date)
@@ -725,7 +725,7 @@ public class SinistreController {
             s.setDateOuverture(dateOrNull(payload.get("dateOuverture")));
             s.setDateSurvenance(dateOrNull(payload.get("dateSurvenance")));
 
-            // --- Caractéristiques ---
+            // --- CaractÃ©ristiques ---
             s.setUsage(str(payload.get("usage")));
             s.setCodeIntermediaire(intOrNull(payload.get("codeIntermediaire")));
             s.setNatureSinistre(str(payload.get("natureSinistre")));
@@ -760,11 +760,11 @@ public class SinistreController {
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Erreur lors de la création", "message", e.getMessage()));
+                    .body(Map.of("error", "Erreur lors de la crÃ©ation", "message", e.getMessage()));
         }
     }
 
-    /* ===== Helpers privés (mets-les en bas du controller) ===== */
+    /* ===== Helpers privÃ©s (mets-les en bas du controller) ===== */
 
     private static String str(Object v) {
         if (v == null) return null;
@@ -804,7 +804,7 @@ public class SinistreController {
             return java.sql.Date.valueOf(s);
         } catch (Exception ignored) {}
         try {
-            // Français: 19/08/2025
+            // FranÃ§ais: 19/08/2025
             return new java.text.SimpleDateFormat("dd/MM/yyyy").parse(s);
         } catch (Exception ignored) {}
         try {

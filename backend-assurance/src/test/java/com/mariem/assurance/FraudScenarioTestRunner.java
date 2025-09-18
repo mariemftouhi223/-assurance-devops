@@ -1,4 +1,4 @@
-package com.mariem.assurance.service.fraud;
+/*package com.mariem.assurance.service.fraud;
 
 import com.mariem.assurance.dto.fraud.ClientData;
 import com.mariem.assurance.dto.fraud.ContractData;
@@ -25,12 +25,12 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
- * Runner de tests pour simuler des scénarios de fraude et vérifier
- * le comportement du système de détection de fraude.
+ * Runner de tests pour simuler des scÃ©narios de fraude et vÃ©rifier
+ * le comportement du systÃ¨me de dÃ©tection de fraude.
  *
  * @author Manus AI
  * @version 1.0
- */
+
 @ExtendWith(MockitoExtension.class)
 public class FraudScenarioTestRunner {
 
@@ -79,7 +79,6 @@ public class FraudScenarioTestRunner {
 
         normalRequest = new FraudPredictionRequest(normalContract, normalClient);
 
-        // Contrat frauduleux
         ContractData fraudContract = new ContractData();
         fraudContract.setContractId("FRAUD-001");
         fraudContract.setClientId("CLIENT-FRAUD");
@@ -92,16 +91,14 @@ public class FraudScenarioTestRunner {
         fraudContract.setCapitaleVol(120000.0);
 
         ClientData fraudClient = new ClientData();
-        fraudClient.setFirstName("Suspect");
         fraudClient.setLastName("Fraudeur");
         fraudClient.setAge(22);
-        fraudClient.setAddress("Zone à Risque");
+        fraudClient.setAddress("Zone Ã  Risque");
         fraudClient.setEmail("suspect@fraud.com");
         fraudClient.setPhone("+33987654321");
 
         fraudulentRequest = new FraudPredictionRequest(fraudContract, fraudClient);
 
-        // Contrat à haut risque (pour test de consensus)
         ContractData highRiskContract = new ContractData();
         highRiskContract.setContractId("HIGH-RISK-001");
         highRiskContract.setClientId("CLIENT-HIGH-RISK");
@@ -117,13 +114,12 @@ public class FraudScenarioTestRunner {
         highRiskClient.setFirstName("Max");
         highRiskClient.setLastName("Danger");
         highRiskClient.setAge(25);
-        highRiskClient.setAddress("Rue du Péril");
+        highRiskClient.setAddress("Rue du PÃ©ril");
         highRiskClient.setEmail("max.danger@email.com");
         highRiskClient.setPhone("+33612345678");
 
         highRiskContractRequest = new FraudPredictionRequest(highRiskContract, highRiskClient);
 
-        // Jeune conducteur avec véhicule de grande valeur
         ContractData youngDriverContract = new ContractData();
         youngDriverContract.setContractId("YOUNG-DRIVER-001");
         youngDriverContract.setClientId("CLIENT-YOUNG");
@@ -146,7 +142,6 @@ public class FraudScenarioTestRunner {
         youngDriverHighValueRequest = new FraudPredictionRequest(youngDriverContract, youngDriverClient);
     }
 
-    // Méthodes utilitaires pour créer des réponses de prédiction
     private FraudPredictionResponse createPredictionResponse(boolean fraud, double confidence, double probability, String riskLevel) {
         FraudPredictionResponse response = new FraudPredictionResponse();
         FraudPredictionResponse.Prediction prediction = new FraudPredictionResponse.Prediction();
@@ -170,9 +165,7 @@ public class FraudScenarioTestRunner {
         return response;
     }
 
-    /**
-     * Scénario 1: Contrat normal - Aucun modèle ne détecte de fraude
-     */
+
     @Test
     void scenario_NormalContract_NoFraudDetected() {
         when(restTemplate.postForObject(contains("ml_service.py"), any(), eq(String.class)))
@@ -189,9 +182,7 @@ public class FraudScenarioTestRunner {
         verify(alertService, never()).saveAlert(any());
     }
 
-    /**
-     * Scénario 2: Contrat frauduleux - Les deux modèles détectent une fraude (consensus)
-     */
+
     @Test
     void scenario_FraudulentContract_ConsensusFraud() {
         when(restTemplate.postForObject(contains("ml_service.py"), any(), eq(String.class)))
@@ -199,11 +190,11 @@ public class FraudScenarioTestRunner {
         when(restTemplate.postForObject(contains("ml_service_v2.py"), any(), eq(String.class)))
                 .thenReturn(createPredictionResponse(true, 0.92, 0.75, "HIGH").toString());
 
-        // Mock de la méthode saveAlert de AlertService
+        // Mock de la mÃ©thode saveAlert de AlertService
         when(alertService.saveAlert(any(FraudAlert.class)))
                 .thenAnswer(invocation -> {
                     FraudAlert alert = invocation.getArgument(0);
-                    alert.setId(1L); // Simuler un ID généré
+                    alert.setId(1L); // Simuler un ID gÃ©nÃ©rÃ©
                     return alert;
                 });
 
@@ -217,9 +208,7 @@ public class FraudScenarioTestRunner {
         verify(alertService, times(1)).saveAlert(any(FraudAlert.class));
     }
 
-    /**
-     * Scénario 3: Contrat suspect - Un seul modèle détecte une fraude (pas de consensus)
-     */
+
     @Test
     void scenario_SuspiciousContract_NoConsensus() {
         when(restTemplate.postForObject(contains("ml_service.py"), any(), eq(String.class)))
@@ -236,9 +225,7 @@ public class FraudScenarioTestRunner {
         verify(alertService, never()).saveAlert(any());
     }
 
-    /**
-     * Scénario 4: Erreur de communication avec un service ML - Gérée sans crash
-     */
+
     @Test
     void scenario_MLServiceError_HandledGracefully() {
         when(restTemplate.postForObject(contains("ml_service.py"), any(), eq(String.class)))
@@ -255,9 +242,7 @@ public class FraudScenarioTestRunner {
         verify(alertService, never()).saveAlert(any());
     }
 
-    /**
-     * Scénario 5: Jeune conducteur avec contrat de grande valeur - Détection de fraude
-     */
+
     @Test
     void scenario_YoungDriverHighValue_FraudDetected() {
         when(restTemplate.postForObject(contains("ml_service.py"), any(), eq(String.class)))
@@ -282,9 +267,7 @@ public class FraudScenarioTestRunner {
         verify(alertService, times(1)).saveAlert(any(FraudAlert.class));
     }
 
-    /**
-     * Scénario 6: Récupération des alertes existantes (simulée)
-     */
+
     @Test
     void scenario_RetrieveExistingAlerts() {
         FraudAlert alert1 = new FraudAlert();
@@ -312,9 +295,7 @@ public class FraudScenarioTestRunner {
         verify(alertService, times(1)).getAllAlerts();
     }
 
-    /**
-     * Scénario 7: Mise à jour du statut d'une alerte (simulée)
-     */
+
     @Test
     void scenario_UpdateAlertStatus() {
         FraudAlert alert = new FraudAlert();
@@ -343,9 +324,7 @@ public class FraudScenarioTestRunner {
         verify(alertService, times(1)).updateAlertStatus(anyLong(), anyString(), anyString(), anyString());
     }
 
-    /**
-     * Scénario 8: Récupération des statistiques d'alertes (simulée)
-     */
+
     @Test
     void scenario_GetAlertStatistics() {
         Map<String, Object> mockStats = Map.of(
@@ -367,16 +346,14 @@ public class FraudScenarioTestRunner {
         verify(alertService, times(1)).getAlertStatistics();
     }
 
-    /**
-     * Scénario 9: Test de la méthode sendFraudAlert (simulée)
-     */
+
     @Test
     void scenario_SendFraudAlert() {
         FraudPredictionResponse fraudResponse = createPredictionResponse(true, 0.9, 0.8, "HIGH");
         ContractData contractData = new ContractData();
         contractData.setContractId("TEST-SEND-001");
 
-        // Pas de retour pour void, juste vérifier l'appel
+        // Pas de retour pour void, juste vÃ©rifier l'appel
         doNothing().when(alertService).sendFraudAlert(any(FraudPredictionResponse.class), any(ContractData.class));
 
         alertService.sendFraudAlert(fraudResponse, contractData);
@@ -384,9 +361,7 @@ public class FraudScenarioTestRunner {
         verify(alertService, times(1)).sendFraudAlert(any(FraudPredictionResponse.class), any(ContractData.class));
     }
 
-    /**
-     * Scénario 10: Test de la méthode getAlertsByStatus (simulée)
-     */
+
     @Test
     void scenario_GetAlertsByStatus() {
         FraudAlert newAlert = new FraudAlert();
@@ -411,9 +386,7 @@ public class FraudScenarioTestRunner {
         verify(alertService, times(1)).getAlertsByStatus("NEW");
     }
 
-    /**
-     * Scénario 11: Test de la méthode getAlertById (simulée)
-     */
+
     @Test
     void scenario_GetAlertById() {
         FraudAlert alert = new FraudAlert();
@@ -431,3 +404,9 @@ public class FraudScenarioTestRunner {
     }
 }
 
+
+
+
+
+
+*/

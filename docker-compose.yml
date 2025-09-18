@@ -11,7 +11,7 @@ services:
       - JAVA_OPTS=-XX:MaxRAMPercentage=75
     command: start-dev
     healthcheck:
-      test: ["CMD-SHELL", "exit 0"]   # ne bloque jamais la CI
+      test: ["CMD-SHELL", "exit 0"]
     networks: [assurance-network]
     volumes:
       - keycloak-data:/opt/keycloak/data
@@ -23,15 +23,40 @@ services:
     image: mariemftouhi/assurance-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     # Port hôte aléatoire → évite "port already allocated" en CI
-    ports: ["9099"]
+    ports:
+      - "9099:9099"
+
     environment:
+      - SERVER_PORT=9099
+      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=com.mysql.cj.jdbc.Driver
+      - SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/assurance?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=
+      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.MySQL8Dialect
       - SPRING_PROFILES_ACTIVE=prod
       - JAVA_OPTS=-Xmx512m -Xms256m
+      - FRAUD_V1_BASE_URL=http://ml-fraud-service:5000
+      - FRAUD_V2_BASE_URL=http://ml-fraud-service-2:5001
       - KEYCLOAK_URL=http://keycloak:8080
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/realms/assurance/protocol/openid-connect/certs
+
+      # ✅ URLs internes Docker pour les microservices ML
+      - FRAUD_V1_BASE_URL=http://ml-fraud-service:5000
+      - FRAUD_V2_BASE_URL=http://ml-fraud-service-2:5001
+
+      # (Optionnel) tu peux laisser SPRING_APPLICATION_JSON si ton code lit ml.v1.base-url
+      - SPRING_APPLICATION_JSON={"ml":{"v1":{"base-url":"http://ml-fraud-service:5000","endpoint":"/predict","timeout":5000},"v2":{"base-url":"http://ml-fraud-service-2:5001","endpoint":"/predict","timeout":5000}}}
+
+      # ✅ depends_on correctement écrit (liste simple)
     depends_on:
       keycloak:
         condition: service_started
-    networks: [assurance-network]
+      ml-fraud-service:
+        condition: service_started
+      ml-fraud-service-2:
+        condition: service_started
+
+    networks: [ assurance-network ]
 
   frontend:
     build:
@@ -49,6 +74,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
     networks: [assurance-network]
 
   ml-fraud-service:
@@ -56,39 +82,60 @@ services:
       context: ./ml-fraud-service
     image: mariemftouhi/ml-fraud-service:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    ports: ["5000"]   # hôte aléatoire
+    ports:
+      - "5000:5000"
     environment:
       - FLASK_ENV=production
+    volumes:
+      - ./ml-fraud-service/models:/app/models:ro
     healthcheck:
-      test: ["CMD", "python", "-c",
-             "import urllib.request,sys; urllib.request.urlopen('http://127.0.0.1:5000/health',timeout=5).read(); sys.exit(0)"]
+      test: [ "CMD", "python", "-c", "import urllib.request,sys; urllib.request.urlopen('http://127.0.0.1:5000/health',timeout=5).read(); sys.exit(0)" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-    networks: [assurance-network]
+    networks: [ assurance-network ]
 
   ml-fraud-service-2:
     build:
       context: ./ml-fraud-service-2
     image: mariemftouhi/ml-fraud-service-2:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    ports: ["5001"]   # hôte aléatoire
+    ports:
+      - "5001:5001"
     environment:
       - FLASK_ENV=production
+    volumes:
+      - ./ml-fraud-service-2/models:/app/models:ro
     healthcheck:
-      test: ["CMD", "python", "-c",
-             "import urllib.request,sys; urllib.request.urlopen('http://127.0.0.1:5001/health',timeout=5).read(); sys.exit(0)"]
+      test: [ "CMD", "python", "-c", "import urllib.request,sys; urllib.request.urlopen('http://127.0.0.1:5001/health',timeout=5).read(); sys.exit(0)" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-    networks: [assurance-network]
+    networks: [ assurance-network ]
+
+
+  metabase:
+    image: metabase/metabase:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - MB_DB_FILE=/metabase-data/metabase.db
+      - MB_SITE_URL=http://localhost:3000
+    volumes:
+      - /c/metabase-data:/metabase-data
+    networks: [ assurance-network ]
+    restart: unless-stopped
+
+
 
 networks:
   assurance-network:
     driver: bridge
 
 volumes:
+  assurance-86_metabase-data:
+    external: true
   keycloak-data:
     driver: local

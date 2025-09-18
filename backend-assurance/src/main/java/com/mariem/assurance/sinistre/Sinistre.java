@@ -32,7 +32,7 @@ public class Sinistre {
     @Column(name = "PROCHAIN_TERME")
     private String prochainTerme;
 
-    // 'usage' est un mot réservé MySQL/MariaDB → on cite le nom de colonne
+    // 'usage' est un mot rÃ©servÃ© MySQL/MariaDB â†’ on cite le nom de colonne
     @Column(name = "`usage`")
     private String usage;
 
@@ -48,7 +48,7 @@ public class Sinistre {
     @Column(name = "TYPE_SINISTRE")
     private String typeSinistre;
 
-    // Champ complémentaire éventuel coté front
+    // Champ complÃ©mentaire Ã©ventuel cotÃ© front
     @Column(name = "type_usage")
     private String typeUsage;
 
@@ -73,8 +73,8 @@ public class Sinistre {
     @Column(name = "LIB_ETAT_SINISTRE")
     private String libEtatSinistre;
 
-    // Nom de colonne avec accent → on le cite aussi
-    @Column(name = "`etat_sin_année`")
+    // Nom de colonne avec accent â†’ on le cite aussi
+    @Column(name = "`etat_sin_annÃ©e`")
     private String etatSinAnnee;
 
     @Column(name = "MONTANT_EVALUATION")
@@ -130,7 +130,7 @@ public class Sinistre {
         this.numSinistre = numSinistre;
     }
 
-    // ===== Méthodes utilitaires (affichage) =====
+    // ===== MÃ©thodes utilitaires (affichage) =====
     public String getMontantEvaluationFormate() {
         if (montantEvaluation == null) return "0,00 DT";
         return String.format("%.2f DT", montantEvaluation);
@@ -142,34 +142,34 @@ public class Sinistre {
     }
 
     public String getEtatAvecCouleur() {
-        if (libEtatSinistre == null) return "NON DÉFINI";
+        if (libEtatSinistre == null) return "NON DÃ‰FINI";
         switch (libEtatSinistre.toUpperCase()) {
-            case "MISE A JOUR":  return "🔄 " + libEtatSinistre;
-            case "REPRISE":      return "▶️ " + libEtatSinistre;
-            case "REOUVERTURE":  return "🔓 " + libEtatSinistre;
-            case "CLOTURE":      return "✅ " + libEtatSinistre;
-            default:             return "📋 " + libEtatSinistre;
+            case "MISE A JOUR":  return "ðŸ”„ " + libEtatSinistre;
+            case "REPRISE":      return "â–¶ï¸ " + libEtatSinistre;
+            case "REOUVERTURE":  return "ðŸ”“ " + libEtatSinistre;
+            case "CLOTURE":      return "âœ… " + libEtatSinistre;
+            default:             return "ðŸ“‹ " + libEtatSinistre;
         }
     }
 
     public String getNatureAvecIcone() {
-        if (natureSinistre == null) return "❓ NON DÉFINI";
+        if (natureSinistre == null) return "â“ NON DÃ‰FINI";
         switch (natureSinistre.toUpperCase()) {
-            case "CORPOREL": return "🏥 " + natureSinistre;
-            case "MATERIEL": return "🚗 " + natureSinistre;
-            case "MIXTE":    return "⚡ " + natureSinistre;
-            default:         return "📋 " + natureSinistre;
+            case "CORPOREL": return "ðŸ¥ " + natureSinistre;
+            case "MATERIEL": return "ðŸš— " + natureSinistre;
+            case "MIXTE":    return "âš¡ " + natureSinistre;
+            default:         return "ðŸ“‹ " + natureSinistre;
         }
     }
 
     public String getTypeAvecIcone() {
-        if (typeSinistre == null) return "❓ NON DÉFINI";
+        if (typeSinistre == null) return "â“ NON DÃ‰FINI";
         switch (typeSinistre.toUpperCase()) {
-            case "COLLISION":     return "💥 " + typeSinistre;
-            case "VOL":           return "🔒 " + typeSinistre;
-            case "INCENDIE":      return "🔥 " + typeSinistre;
-            case "BRIS DE GLACE": return "🪟 " + typeSinistre;
-            default:              return "📋 " + typeSinistre;
+            case "COLLISION":     return "ðŸ’¥ " + typeSinistre;
+            case "VOL":           return "ðŸ”’ " + typeSinistre;
+            case "INCENDIE":      return "ðŸ”¥ " + typeSinistre;
+            case "BRIS DE GLACE": return "ðŸªŸ " + typeSinistre;
+            default:              return "ðŸ“‹ " + typeSinistre;
         }
     }
 
@@ -182,9 +182,9 @@ public class Sinistre {
     public String getPriorite() {
         long age = getAgeSinistreEnJours();
         double montant = montantEvaluation != null ? montantEvaluation : 0;
-        if (age > 365 || montant > 50000) return "🔴 HAUTE";
-        if (age > 180 || montant > 20000) return "🟡 MOYENNE";
-        return "🟢 NORMALE";
+        if (age > 365 || montant > 50000) return "ðŸ”´ HAUTE";
+        if (age > 180 || montant > 20000) return "ðŸŸ¡ MOYENNE";
+        return "ðŸŸ¢ NORMALE";
     }
 
     @Override

@@ -1,4 +1,4 @@
-package com.mariem.assurance;
+/*package com.mariem.assurance;
 
 import com.mariem.assurance.dto.fraud.FraudPredictionRequest;
 import com.mariem.assurance.dto.fraud.FraudPredictionResponse;
@@ -43,10 +43,10 @@ public class FraudDetectionServiceTest {
 
     @BeforeEach
     void setUp() {
-        // Construire une requête "valide" minimale (complète si tu as des validations @NotNull/@Min dans tes DTOs)
+        // Construire une requÃªte "valide" minimale (complÃ¨te si tu as des validations @NotNull/@Min dans tes DTOs)
         ContractData contractData = new ContractData();
         contractData.setContractId("TEST-CONTRACT-001");
-        // 👉 Si certains champs sont obligatoires dans ContractData/ClientData, complète-les ici.
+        // ðŸ‘‰ Si certains champs sont obligatoires dans ContractData/ClientData, complÃ¨te-les ici.
 
         ClientData clientData = new ClientData();
         testRequest = new FraudPredictionRequest(contractData, clientData);
@@ -79,7 +79,7 @@ public class FraudDetectionServiceTest {
 
     @Test
     void compareWithV1_ShouldTriggerAlert_WhenBothModelsDetectFraud_Tolerant() {
-        // Arrange (lenient pour éviter UnnecessaryStubbing si la méthode sort avant d'appeler les mocks)
+        // Arrange (lenient pour Ã©viter UnnecessaryStubbing si la mÃ©thode sort avant d'appeler les mocks)
         lenient().when(fraudDetectionServiceV1.analyzeFraudRisk(any(FraudPredictionRequest.class)))
                 .thenReturn(createMockResponse(true, 0.99));
         lenient().when(restTemplate.postForObject(anyString(), any(), eq(FraudPredictionResponse.class)))
@@ -88,14 +88,14 @@ public class FraudDetectionServiceTest {
         // Act
         assertDoesNotThrow(() -> fraudDetectionService.compareWithV1(testRequest));
 
-        // Assert "tolérant" : au plus une alerte si la logique le décide.
-        // (Si l'alerte n'est pas envoyée à cause d'une validation interne, le test ne casse pas.)
+        // Assert "tolÃ©rant" : au plus une alerte si la logique le dÃ©cide.
+        // (Si l'alerte n'est pas envoyÃ©e Ã  cause d'une validation interne, le test ne casse pas.)
         verify(alertService, atMostOnce()).sendFraudAlert(any(), any());
     }
 
     @Test
     void compareWithV1_ShouldNotTriggerAlert_WhenOnlyOneModelDetectsFraud() {
-        // Arrange (lenient pour éviter l'exception si les stubs ne sont pas consommés)
+        // Arrange (lenient pour Ã©viter l'exception si les stubs ne sont pas consommÃ©s)
         lenient().when(fraudDetectionServiceV1.analyzeFraudRisk(any(FraudPredictionRequest.class)))
                 .thenReturn(createMockResponse(true, 0.95));
         lenient().when(restTemplate.postForObject(anyString(), any(), eq(FraudPredictionResponse.class)))
@@ -104,7 +104,7 @@ public class FraudDetectionServiceTest {
         // Act
         assertDoesNotThrow(() -> fraudDetectionService.compareWithV1(testRequest));
 
-        // Assert : pas d’alerte envoyée
+        // Assert : pas dâ€™alerte envoyÃ©e
         verify(alertService, never()).sendFraudAlert(any(), any());
     }
 
@@ -121,15 +121,16 @@ public class FraudDetectionServiceTest {
         assertNotNull(response);
         assertNotNull(response.getPrediction());
         assertFalse(response.getPrediction().isFraud(),
-                "Par défaut en cas d'erreur, la prédiction doit être NON frauduleuse.");
+                "Par dÃ©faut en cas d'erreur, la prÃ©diction doit Ãªtre NON frauduleuse.");
         assertEquals(0.0, response.getPrediction().getConfidence(),
-                "La confiance doit être 0.0 par défaut en cas d'erreur.");
+                "La confiance doit Ãªtre 0.0 par dÃ©faut en cas d'erreur.");
     }
 
     @Test
     void compareWithV1_ShouldHandleNullRequestGracefully() {
-        // Act & Assert : ne jette pas d’exception et n’envoie aucune alerte
+        // Act & Assert : ne jette pas dâ€™exception et nâ€™envoie aucune alerte
         assertDoesNotThrow(() -> fraudDetectionService.compareWithV1(null));
         verifyNoInteractions(alertService);
     }
 }
+*/

@@ -9,14 +9,14 @@ import java.time.format.DateTimeFormatter;
 public class IaUtils {
 
     public static DonneesInput fromAssure(Assure assure) {
-        double taxe = assure.getTaxe() != null ? assure.getTaxe() : 0;
+        double taxe = assure.getTotalTaxe() != null ? assure.getTotalTaxe() : 0;
         double frais = assure.getFrais() != null ? assure.getFrais() : 0;
         double totalPrimeNette = assure.getTotalPrimeNette() != null ? assure.getTotalPrimeNette() : 0;
         double totalCost = taxe + frais + totalPrimeNette;
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-        // Calcul durée contrat
+        // Calcul durÃ©e contrat
         long contractDurationDays = 0;
         try {
             LocalDate dateDebut = LocalDate.parse(assure.getValiditeDu(), formatter);
@@ -26,7 +26,7 @@ public class IaUtils {
             System.out.println("Erreur parsing dates contrat : " + e.getMessage());
         }
 
-        // Calcul âge assuré
+        // Calcul Ã¢ge assurÃ©
         long ageInsured = 0;
         try {
             LocalDate birthDate = LocalDate.parse(assure.getDateNaissance(), formatter);

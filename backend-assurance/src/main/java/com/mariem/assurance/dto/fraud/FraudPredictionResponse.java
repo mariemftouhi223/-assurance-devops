@@ -3,17 +3,20 @@ package com.mariem.assurance.dto.fraud;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 import java.util.Map;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
-@Schema(description = "Réponse de prédiction de fraude contenant les résultats d'analyse")
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+@Schema(description = "RÃ©ponse de prÃ©diction de fraude contenant les rÃ©sultats d'analyse")
 public class FraudPredictionResponse {
 
-    @Schema(description = "Métadonnées de traitement")
+    @Schema(description = "MÃ©tadonnÃ©es de traitement")
     private Metadata metadata;
 
-    @Schema(description = "Informations sur le modèle utilisé")
+    @Schema(description = "Informations sur le modÃ¨le utilisÃ©")
     private Model model;
 
-    @Schema(description = "Résultat de la prédiction")
+    @Schema(description = "RÃ©sultat de la prÃ©diction")
     private Prediction prediction;
 
     // Constructeurs
@@ -52,12 +55,12 @@ public class FraudPredictionResponse {
 
     // Classes internes
 
-    @Schema(description = "Métadonnées de traitement de la requête")
+    @Schema(description = "MÃ©tadonnÃ©es de traitement de la requÃªte")
     public static class Metadata {
         @Schema(description = "Temps de traitement en millisecondes", example = "150")
         private Long processingTime;
 
-        @Schema(description = "ID unique de la requête", example = "req-123456")
+        @Schema(description = "ID unique de la requÃªte", example = "req-123456")
         private String requestId;
 
         @Schema(description = "Nom du service", example = "fraud-detection-service")
@@ -66,16 +69,16 @@ public class FraudPredictionResponse {
         @Schema(description = "Timestamp de traitement", example = "2025-07-28T10:30:00Z")
         private String timestamp;
 
-        @Schema(description = "Version du modèle utilisé", example = "v2.1.0")
+        @Schema(description = "Version du modÃ¨le utilisÃ©", example = "v2.1.0")
         private String modelVersion;
 
-        @Schema(description = "Type de modèle", example = "ensemble")
+        @Schema(description = "Type de modÃ¨le", example = "ensemble")
         private String modelType;
 
         @Schema(description = "Temps de traitement en millisecondes (alias)", example = "150")
         private Long processingTimeMs;
 
-        @Schema(description = "Caractéristiques suspectes détectées")
+        @Schema(description = "CaractÃ©ristiques suspectes dÃ©tectÃ©es")
         private List<String> suspiciousFeatures;
 
         @Schema(description = "Informations additionnelles sur le contrat")
@@ -113,18 +116,18 @@ public class FraudPredictionResponse {
         public void setContractInfo(Map<String, Object> contractInfo) { this.contractInfo = contractInfo; }
     }
 
-    @Schema(description = "Informations sur le modèle de machine learning utilisé")
+    @Schema(description = "Informations sur le modÃ¨le de machine learning utilisÃ©")
     public static class Model {
-        @Schema(description = "Algorithme utilisé", example = "RandomForest")
+        @Schema(description = "Algorithme utilisÃ©", example = "RandomForest")
         private String algorithm;
 
-        @Schema(description = "Nombre de caractéristiques utilisées", example = "25")
+        @Schema(description = "Nombre de caractÃ©ristiques utilisÃ©es", example = "25")
         private Integer featuresUsed;
 
-        @Schema(description = "Indique si un scaler a été utilisé", example = "true")
+        @Schema(description = "Indique si un scaler a Ã©tÃ© utilisÃ©", example = "true")
         private Boolean scalerUsed;
 
-        @Schema(description = "Version du modèle", example = "v2.1.0")
+        @Schema(description = "Version du modÃ¨le", example = "v2.1.0")
         private String version;
 
         // Constructeurs
@@ -151,12 +154,12 @@ public class FraudPredictionResponse {
         public void setVersion(String version) { this.version = version; }
     }
 
-    @Schema(description = "Résultat de la prédiction de fraude")
+    @Schema(description = "RÃ©sultat de la prÃ©diction de fraude")
     public static class Prediction {
-        @Schema(description = "Niveau de confiance de la prédiction", example = "0.85", minimum = "0", maximum = "1")
+        @Schema(description = "Niveau de confiance de la prÃ©diction", example = "0.85", minimum = "0", maximum = "1")
         private Double confidence;
 
-        @Schema(description = "Probabilité de fraude", example = "0.75", minimum = "0", maximum = "1")
+        @Schema(description = "ProbabilitÃ© de fraude", example = "0.75", minimum = "0", maximum = "1")
         private Double fraudProbability;
 
         @Schema(description = "Niveau de risque", example = "HIGH", allowableValues = {"LOW", "MEDIUM", "HIGH", "CRITICAL"})
@@ -188,7 +191,7 @@ public class FraudPredictionResponse {
         public Boolean getFraud() { return fraud; }
         public void setFraud(Boolean fraud) { this.fraud = fraud; }
 
-        // Méthode utilitaire
+        // MÃ©thode utilitaire
         public boolean isFraud() {
             return fraud != null && fraud;
         }

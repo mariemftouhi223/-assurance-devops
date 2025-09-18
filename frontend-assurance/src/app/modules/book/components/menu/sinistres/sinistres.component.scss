@@ -719,3 +719,19 @@
 }
 /* optionnel */
 .btn.btn-primary { border-radius: 0.75rem; font-weight: 600; }
+
+
+/* ======= FIX tableau “coupé” ======= */
+.table-responsive {
+  overflow-x: auto !important;   /* au lieu de hidden */
+}
+
+.sinistres-table {
+  table-layout: auto;            /* pas de compression des colonnes */
+  min-width: 1600px;             /* ajuste si tu as +/– de colonnes */
+}
+
+.sinistres-table th,
+.sinistres-table td {
+  white-space: nowrap;           /* le surplus partira en scroll horizontal */
+}

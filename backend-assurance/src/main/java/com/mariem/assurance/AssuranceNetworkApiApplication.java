@@ -9,12 +9,12 @@ import org.springframework.test.context.ActiveProfiles;
 
 
 @ActiveProfiles("test")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD) // ← AJOUTER
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD) // â† AJOUTER
 @EnableAsync
 @SpringBootApplication
 public class AssuranceNetworkApiApplication {
 
-	// 🔧 Ajout important : permet de redéfinir les beans
+	// ðŸ”§ Ajout important : permet de redÃ©finir les beans
 	static {
 		System.setProperty("spring.main.allow-bean-definition-overriding", "true");
 	}

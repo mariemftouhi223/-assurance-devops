@@ -1,14 +1,11 @@
 package com.mariem.assurance.service.fraud;
 
-import com.mariem.assurance.dto.fraud.FraudPredictionResponse;
-import com.mariem.assurance.dto.fraud.FraudPredictionRequest;
-import com.mariem.assurance.dto.fraud.ContractData;
+import com.mariem.assurance.dto.fraud.FraudDetectionDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.support.GenericMessage;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -24,232 +21,175 @@ public class AlertService {
     private final Map<Long, FraudAlert> alertsStorage = new ConcurrentHashMap<>();
     private final AtomicLong alertIdGenerator = new AtomicLong(1);
 
-    // Statistiques
-    private int totalTests = 0;
-    private int fraudsDetected = 0;
-    private int criticalAlerts = 0;
-    private int falsePositives = 0;
+    private int totalTests = 0, fraudsDetected = 0, criticalAlerts = 0, falsePositives = 0;
     private LocalDateTime lastUpdate = LocalDateTime.now();
 
-    @Autowired
     public AlertService(SimpMessagingTemplate messagingTemplate) {
         this.messagingTemplate = messagingTemplate;
     }
 
-    // ===== Méthodes publiques =====
-
-    public void sendFraudAlert(FraudPredictionResponse fraudResponse, ContractData contractData) {
+    /* === API === */
+    public void sendFraudAlert(FraudDetectionDTO dto, String contractId) {
         try {
-            FraudAlert alert = createFraudAlert(fraudResponse, contractData);
+            FraudAlert alert = createFraudAlert(dto, contractId);
             alertsStorage.put(alert.getId(), alert);
             updateStatistics(alert);
-            sendWebSocketNotification("/topic/fraud-alerts", "FRAUD_ALERT", alert);
+            sendWebSocket("/topic/fraud-alerts", "FRAUD_ALERT", alert);
         } catch (Exception e) {
             log.error("Erreur lors de l'envoi d'alerte", e);
         }
     }
+    public void sendFraudAlert(FraudDetectionDTO dto, Long numContrat) {
+        sendFraudAlert(dto, numContrat == null ? "UNKNOWN" : String.valueOf(numContrat));
+    }
 
-    public FraudAlert updateAlertStatus(Long alertId, String newStatus, String reviewedBy, String comments) {
-        FraudAlert alert = alertsStorage.get(alertId);
-        if (alert != null) {
-            alert.setStatus(newStatus);
-            alert.setReviewedBy(reviewedBy);
-            alert.setComments(comments);
-            alert.setLastUpdated(LocalDateTime.now());
-            sendWebSocketNotification("/topic/alert-updates", "ALERT_UPDATE", alert);
-        }
+    // gardÃ©e pour ton FraudAlertController
+    public FraudAlert saveAlert(FraudAlert alert) {
+        if (alert == null) throw new IllegalArgumentException("L'alerte ne peut pas Ãªtre null");
+        if (alert.getId() == null) alert.setId(alertIdGenerator.getAndIncrement());
+        LocalDateTime now = LocalDateTime.now();
+        if (alert.getTimestamp() == null) alert.setTimestamp(now);
+        alert.setLastUpdated(now);
+        if (alert.getStatus() == null) alert.setStatus("NEW");
+        if (alert.getPriority() == null) alert.setPriority("LOW");
+        alertsStorage.put(alert.getId(), alert);
+        updateStatistics(alert);
+        sendWebSocket("/topic/fraud-alerts", "ALERT_SAVED", alert);
         return alert;
     }
 
-    public Map<String, Object> getAlertStatistics() {
-        Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("totalTests", totalTests);
-        stats.put("fraudsDetected", fraudsDetected);
-        stats.put("criticalAlerts", criticalAlerts);
-        stats.put("falsePositives", falsePositives);
-        stats.put("lastUpdate", lastUpdate);
+    public FraudAlert updateAlertStatus(Long id, String status, String reviewedBy, String comments) {
+        FraudAlert a = alertsStorage.get(id);
+        if (a != null) {
+            a.setStatus(status);
+            a.setReviewedBy(reviewedBy);
+            a.setComments(comments);
+            a.setLastUpdated(LocalDateTime.now());
+            sendWebSocket("/topic/alert-updates", "ALERT_UPDATE", a);
+        }
+        return a;
+    }
 
-        // Ajout des statistiques par statut
-        Map<String, Long> statusCounts = alertsStorage.values().stream()
-                .collect(Collectors.groupingBy(FraudAlert::getStatus, Collectors.counting()));
-        stats.put("statusCounts", statusCounts);
-
-        return stats;
+    public Map<String,Object> getAlertStatistics() {
+        Map<String,Object> m = new LinkedHashMap<>();
+        m.put("totalTests", totalTests);
+        m.put("fraudsDetected", fraudsDetected);
+        m.put("criticalAlerts", criticalAlerts);
+        m.put("falsePositives", falsePositives);
+        m.put("lastUpdate", lastUpdate);
+        m.put("statusCounts", alertsStorage.values().stream()
+                .collect(Collectors.groupingBy(FraudAlert::getStatus, Collectors.counting())));
+        return m;
     }
 
     public List<FraudAlert> getAllAlerts() {
-        return new ArrayList<>(alertsStorage.values()).stream()
-                .sorted(Comparator.comparing(FraudAlert::getTimestamp).reversed())
-                .collect(Collectors.toList());
-    }
-
-    public FraudAlert getAlertById(Long alertId) {
-        return alertsStorage.get(alertId);
-    }
-
-    public List<FraudAlert> getAlertsByStatus(String status) {
         return alertsStorage.values().stream()
-                .filter(alert -> status.equals(alert.getStatus()))
                 .sorted(Comparator.comparing(FraudAlert::getTimestamp).reversed())
                 .collect(Collectors.toList());
     }
 
-    // ===== Méthodes privées =====
+    public FraudAlert getAlertById(Long id) { return alertsStorage.get(id); }
 
-    private FraudAlert createFraudAlert(FraudPredictionResponse fraudResponse, ContractData contractData) {
-        FraudAlert alert = new FraudAlert();
-        alert.setId(alertIdGenerator.getAndIncrement());
-        alert.setContractId(contractData.getContractId());
-        alert.setTimestamp(LocalDateTime.now());
-        alert.setStatus("NEW");
-
-        if (fraudResponse.getPrediction() != null) {
-            alert.setFraudProbability(fraudResponse.getPrediction().getFraudProbability());
-            alert.setPriority(calculatePriority(fraudResponse.getPrediction().getFraudProbability()));
-        }
-
-        return alert;
+    public List<FraudAlert> getAlertsByStatus(String s) {
+        return alertsStorage.values().stream().filter(a -> s.equals(a.getStatus()))
+                .sorted(Comparator.comparing(FraudAlert::getTimestamp).reversed()).collect(Collectors.toList());
     }
 
-    private String calculatePriority(double fraudProbability) {
-        if (fraudProbability >= 0.9) return "CRITICAL";
-        if (fraudProbability >= 0.7) return "HIGH";
-        if (fraudProbability >= 0.5) return "MEDIUM";
+    public void triggerAlert(String message) {
+        log.warn("ðŸš¨ ALERTE : {}", message);
+        FraudAlert a = new FraudAlert();
+        a.setId(alertIdGenerator.getAndIncrement());
+        a.setContractId("SYSTEM");
+        a.setStatus("NEW");
+        a.setTimestamp(LocalDateTime.now());
+        a.setLastUpdated(LocalDateTime.now());
+        a.setComments(message);
+        a.setPriority("LOW");
+        a.setFraudProbability(0.0);
+        alertsStorage.put(a.getId(), a);
+        sendWebSocket("/topic/fraud-alerts", "MANUAL_ALERT", a);
+    }
+
+    public void notifyFraudDecision(FraudDetectionDTO dto, String contractId) {
+        boolean isFraud = dto != null && dto.getPrediction() != null && Boolean.TRUE.equals(dto.getPrediction().getIsFraud());
+        Integer score = dto != null ? dto.getFraudScore() : null;
+        String level = dto != null ? dto.getRiskLevel() : null;
+        triggerAlert(String.format("Fraud decision (contract=%s): fraud=%s, score=%s, level=%s",
+                contractId, isFraud, score, level));
+    }
+
+    /* === privÃ© === */
+    private FraudAlert createFraudAlert(FraudDetectionDTO dto, String contractId) {
+        FraudAlert a = new FraudAlert();
+        a.setId(alertIdGenerator.getAndIncrement());
+        a.setContractId(contractId == null ? "UNKNOWN" : contractId);
+        a.setTimestamp(LocalDateTime.now());
+        a.setLastUpdated(a.getTimestamp());
+        a.setStatus("NEW");
+
+        double p = 0.0;
+        if (dto != null && dto.getPrediction() != null && dto.getPrediction().getFraudProbability() != null) {
+            p = dto.getPrediction().getFraudProbability();
+        }
+        a.setFraudProbability(p);
+        String prio = mapLevel(dto != null ? dto.getRiskLevel() : null);
+        if (prio == null) prio = priorityByProb(p);
+        a.setPriority(prio);
+        return a;
+    }
+
+    private String mapLevel(String l) {
+        if (l == null) return null;
+        return switch (l) {
+            case "CRITICAL" -> "CRITICAL";
+            case "HIGH" -> "HIGH";
+            case "MEDIUM" -> "MEDIUM";
+            case "LOW", "NORMAL" -> "LOW";
+            default -> null;
+        };
+    }
+    private String priorityByProb(double p) {
+        if (p >= 0.90) return "CRITICAL";
+        if (p >= 0.70) return "HIGH";
+        if (p >= 0.50) return "MEDIUM";
         return "LOW";
     }
 
-    private void sendWebSocketNotification(String destination, String messageType, FraudAlert alert) {
+    private void sendWebSocket(String dest, String type, FraudAlert a) {
         try {
-            Map<String, Object> headers = new HashMap<>();
-            headers.put("type", messageType);
-
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("alert", alert);
+            Map<String,Object> headers = Map.of("type", type);
+            Map<String,Object> payload = new LinkedHashMap<>();
+            payload.put("alert", a);
             payload.put("timestamp", LocalDateTime.now());
-
-            messagingTemplate.convertAndSend(destination, new GenericMessage<>(payload, headers));
-        } catch (Exception e) {
-            log.error("Erreur WebSocket", e);
-        }
+            if (messagingTemplate != null)
+                messagingTemplate.convertAndSend(dest, new GenericMessage<>(payload, headers));
+        } catch (Exception e) { log.error("Erreur WebSocket", e); }
     }
 
-    private void updateStatistics(FraudAlert alert) {
+    private void updateStatistics(FraudAlert a) {
         totalTests++;
-        fraudsDetected++;
-        if ("CRITICAL".equals(alert.getPriority())) {
-            criticalAlerts++;
-        }
+        if ("HIGH".equals(a.getPriority()) || "CRITICAL".equals(a.getPriority())) fraudsDetected++;
+        if ("CRITICAL".equals(a.getPriority())) criticalAlerts++;
         lastUpdate = LocalDateTime.now();
     }
 
-    /**
-     * Sauvegarde une alerte de fraude
-     * @param alert L'alerte à sauvegarder
-     * @return L'alerte sauvegardée avec son ID
-     * @throws IllegalArgumentException Si l'alerte est null
-     */
-    public FraudAlert saveAlert(FraudAlert alert) {
-        if (alert == null) {
-            throw new IllegalArgumentException("L'alerte ne peut pas être null");
-        }
-
-        try {
-            // Génération d'un ID si nécessaire
-            if (alert.getId() == null) {
-                alert.setId(alertIdGenerator.getAndIncrement());
-            }
-
-            // Mise à jour des dates
-            LocalDateTime now = LocalDateTime.now();
-            alert.setTimestamp(now);
-            alert.setLastUpdated(now);
-
-            // Par défaut, statut "NEW" si non spécifié
-            if (alert.getStatus() == null) {
-                alert.setStatus("NEW");
-            }
-
-            // Sauvegarde
-            alertsStorage.put(alert.getId(), alert);
-
-            // Mise à jour des statistiques
-            updateStatistics(alert);
-
-            // Notification
-            sendWebSocketNotification("/topic/fraud-alerts", "ALERT_SAVED", alert);
-
-            log.info("Alerte sauvegardée avec ID: {}", alert.getId());
-            return alert;
-        } catch (Exception e) {
-            log.error("Erreur lors de la sauvegarde de l'alerte", e);
-            throw new RuntimeException("Erreur lors de la sauvegarde de l'alerte", e);
-        }
-    }
-
-    /**
-     * Déclenche une alerte simple avec message (méthode ajoutée pour tests & alertes manuelles)
-     * @param message Message à afficher / loguer dans l'alerte
-     */
-    public void triggerAlert(String message) {
-        log.warn("🚨 ALERTE : {}", message);
-
-        FraudAlert alert = new FraudAlert();
-        alert.setId(alertIdGenerator.getAndIncrement());
-        alert.setContractId("SYSTEM"); // ID générique
-        alert.setStatus("NEW");
-        alert.setTimestamp(LocalDateTime.now());
-        alert.setLastUpdated(LocalDateTime.now());
-        alert.setComments(message);
-        alert.setPriority("LOW");
-        alert.setFraudProbability(0.0);
-
-        alertsStorage.put(alert.getId(), alert);
-        sendWebSocketNotification("/topic/fraud-alerts", "MANUAL_ALERT", alert);
-    }
-
-    // ===== Classe interne =====
-
+    /* === DTO interne === */
     public static class FraudAlert {
         private Long id;
         private String contractId;
-        private LocalDateTime timestamp;
-        private LocalDateTime lastUpdated;
-        private String status;
-        private String priority;
+        private LocalDateTime timestamp, lastUpdated;
+        private String status, priority, reviewedBy, comments;
         private double fraudProbability;
-        private String reviewedBy;
-        private String comments;
 
-        // Getters and setters
-        public Long getId() { return id; }
-        public void setId(Long id) { this.id = id; }
-
-        public String getContractId() { return contractId; }
-        public void setContractId(String contractId) { this.contractId = contractId; }
-
-        public LocalDateTime getTimestamp() { return timestamp; }
-        public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
-
-        public LocalDateTime getLastUpdated() { return lastUpdated; }
-        public void setLastUpdated(LocalDateTime lastUpdated) { this.lastUpdated = lastUpdated; }
-
-        public String getStatus() { return status; }
-        public void setStatus(String status) { this.status = status; }
-
-        public String getPriority() { return priority; }
-        public void setPriority(String priority) { this.priority = priority; }
-
-        public double getFraudProbability() { return fraudProbability; }
-        public void setFraudProbability(double fraudProbability) { this.fraudProbability = fraudProbability; }
-
-        public String getReviewedBy() { return reviewedBy; }
-        public void setReviewedBy(String reviewedBy) { this.reviewedBy = reviewedBy; }
-
-        public String getComments() { return comments; }
-        public void setComments(String comments) { this.comments = comments; }
-
-        public boolean isPending() {
-            return "NEW".equals(status) || "IN_REVIEW".equals(status);
-        }
+        public Long getId() { return id; } public void setId(Long id) { this.id = id; }
+        public String getContractId() { return contractId; } public void setContractId(String contractId) { this.contractId = contractId; }
+        public LocalDateTime getTimestamp() { return timestamp; } public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+        public LocalDateTime getLastUpdated() { return lastUpdated; } public void setLastUpdated(LocalDateTime lastUpdated) { this.lastUpdated = lastUpdated; }
+        public String getStatus() { return status; } public void setStatus(String status) { this.status = status; }
+        public String getPriority() { return priority; } public void setPriority(String priority) { this.priority = priority; }
+        public double getFraudProbability() { return fraudProbability; } public void setFraudProbability(double v) { this.fraudProbability = v; }
+        public String getReviewedBy() { return reviewedBy; } public void setReviewedBy(String reviewedBy) { this.reviewedBy = reviewedBy; }
+        public String getComments() { return comments; } public void setComments(String comments) { this.comments = comments; }
+        public boolean isPending() { return "NEW".equals(status) || "IN_REVIEW".equals(status); }
     }
 }

@@ -15,31 +15,31 @@ public class CorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")  // ✅ Toutes les routes API
-                .allowedOrigins("http://localhost:4200")  // ✅ Frontend Angular
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")  // ✅ Méthodes HTTP
-                .allowedHeaders("*")  // ✅ Tous les headers
-                .allowCredentials(true)  // ✅ Cookies/credentials
-                .maxAge(3600);  // ✅ Cache preflight 1h
+        registry.addMapping("/api/**")  // âœ… Toutes les routes API
+                .allowedOrigins("http://localhost:4200")  // âœ… Frontend Angular
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")  // âœ… MÃ©thodes HTTP
+                .allowedHeaders("*")  // âœ… Tous les headers
+                .allowCredentials(true)  // âœ… Cookies/credentials
+                .maxAge(3600);  // âœ… Cache preflight 1h
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // ✅ Origines autorisées
+        // âœ… Origines autorisÃ©es
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200"));
 
-        // ✅ Méthodes autorisées
+        // âœ… MÃ©thodes autorisÃ©es
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
-        // ✅ Headers autorisés
+        // âœ… Headers autorisÃ©s
         configuration.setAllowedHeaders(Arrays.asList("*"));
 
-        // ✅ Autoriser les credentials
+        // âœ… Autoriser les credentials
         configuration.setAllowCredentials(true);
 
-        // ✅ Headers exposés au frontend
+        // âœ… Headers exposÃ©s au frontend
         configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

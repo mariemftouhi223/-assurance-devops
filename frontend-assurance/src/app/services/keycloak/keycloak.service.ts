@@ -28,6 +28,10 @@ export class KeycloakService {
   async init() {
     const authenticated = await this.keycloak.init({
       onLoad: 'login-required',
+      pkceMethod: 'S256',
+      checkLoginIframe: false,                               // évite l’iframe 3rd-party
+      redirectUri: 'http://localhost:4200/',                // EXACT (avec / final)
+      silentCheckSsoRedirectUri: window.location.origin + '/assets/silent-check-sso.html'
     });
 
     if (authenticated) {
@@ -36,13 +40,15 @@ export class KeycloakService {
     }
   }
 
+
+
   login() {
     return this.keycloak.login();
   }
 
   logout() {
     // this.keycloak.accountManagement();
-    return this.keycloak.logout({redirectUri: 'http://localhost:4200'});
+    return this.keycloak.logout({redirectUri: 'http://localhost:4200/'});
   }
 
   // ✅ NOUVELLE MÉTHODE AJOUTÉE - Compatible avec keycloak-angular

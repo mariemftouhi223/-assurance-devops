@@ -17,7 +17,7 @@ public class FraudCaseService {
     private final JdbcTemplate jdbc;
 
     public void recordIfFraud(String entityType, String entityId, int score, String reason) {
-        if (score < 50) return; // règle métier : on ne garde que ≥ 50%
+        if (score < 50) return; // rÃ¨gle mÃ©tier : on ne garde que â‰¥ 50%
 
         String level = score >= 80 ? "CRITICAL" : score >= 60 ? "HIGH" : "MEDIUM";
         jdbc.update("""

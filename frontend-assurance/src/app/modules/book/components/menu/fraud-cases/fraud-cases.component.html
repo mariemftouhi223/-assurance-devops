@@ -1,74 +1,128 @@
-<div class="d-flex align-items-center gap-2 mb-3">
-  <h3 class="mb-0">Cas frauduleux (≥ 50%)</h3>
+<div class="container-fluid p-3">
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <h3 class="mb-0">Cas frauduleux (≥ {{ minScore }}%)</h3>
 
-  <select class="form-select form-select-sm w-auto" [(ngModel)]="filterEntity" (change)="load()">
-    <option value="ALL">Tous</option>
-    <option value="ASSURE">Assurés</option>
-    <option value="SINISTRE">Sinistres</option>
-  </select>
+    <!-- Type -->
+    <select class="form-select form-select-sm w-auto"
+            [(ngModel)]="filterEntity"
+            (ngModelChange)="load()">
+      <option value="ALL">Tous</option>
+      <option value="ASSURE">Assurés</option>
+      <option value="SINISTRE">Sinistres</option>
+    </select>
 
-  <select class="form-select form-select-sm w-auto" [(ngModel)]="status" (change)="load()">
-    <option value="OPEN">Ouverts</option>
-    <option value="REVIEWED">Revus</option>
-    <option value="DISMISSED">Ignorés</option>
-    <option value="CONFIRMED">Confirmés</option>
-    <option value="RESOLVED">Résolus</option>
-  </select>
+    <!-- Statut -->
+    <select class="form-select form-select-sm w-auto"
+            [(ngModel)]="status"
+            (ngModelChange)="load()">
+      <option value="OPEN">Ouverts</option>
+      <option value="REVIEWED">Revus</option>
+      <option value="DISMISSED">Ignorés</option>
+      <option value="CONFIRMED">Confirmés</option>
+      <option value="RESOLVED">Résolus</option>
+    </select>
 
-  <input class="form-control form-control-sm w-auto" type="number" [(ngModel)]="minScore" (change)="load()" />
+    <!-- Min score -->
+    <div class="input-group input-group-sm w-auto">
+      <span class="input-group-text">Min score</span>
+      <input class="form-control" type="number" min="0" max="100"
+             [(ngModel)]="minScore" (change)="load()" />
+    </div>
 
-  <button class="btn btn-primary btn-sm" (click)="load()">Rafraîchir</button>
-</div>
+    <button class="btn btn-primary btn-sm" (click)="load()">Rafraîchir</button>
+  </div>
 
-<div *ngIf="error" class="alert alert-danger py-2">{{ error }}</div>
+  <div *ngIf="error" class="alert alert-danger py-2">{{ error }}</div>
 
-<div class="table-responsive">
-  <table class="table table-hover align-middle">
-    <thead class="table-dark">
-    <tr>
-      <th>#</th>
-      <th>Type</th>
-      <th>Identifiant</th>
-      <th>Score</th>
-      <th>Niveau</th>
-      <th>Raison</th>
-      <th>Détecté le</th>
-      <th>Actions</th>
-    </tr>
-    </thead>
+  <div *ngIf="isLoading" class="text-center my-4">
+    <div class="spinner-border" role="status"><span class="visually-hidden">Chargement…</span></div>
+  </div>
 
-    <tbody>
-    <tr *ngFor="let r of rows; let i = index; trackBy: trackById">
-      <td>{{ i + 1 }}</td>
-      <td>{{ r.entity_type }}</td>
-      <td>{{ r.entity_id }}</td>
-      <td>{{ r.score }}%</td>
-      <td>
-          <span class="badge"
-                [ngClass]="{
-                  'bg-danger': r.risk_level === 'CRITICAL',
-                  'bg-warning text-dark': r.risk_level === 'HIGH',
-                  'bg-primary': r.risk_level === 'MEDIUM',
-                  'bg-success': r.risk_level === 'LOW' || r.risk_level === 'NORMAL'
-                }">
+  <div class="table-responsive" *ngIf="!isLoading">
+    <table class="table table-hover align-middle">
+      <thead class="table-dark">
+      <tr>
+        <th>#</th>
+        <th>Type</th>
+        <th>Identifiant</th>
+        <th>Score</th>
+        <th>Niveau</th>
+        <th>Raison</th>
+        <th>Détecté le</th>
+        <th>Actions</th>
+      </tr>
+      </thead>
+
+      <tbody>
+      <tr *ngFor="let r of rows; let i = index; trackBy: trackById">
+        <td>{{ i + 1 }}</td>
+        <td>{{ r.entity_type }}</td>
+        <td>{{ r.entity_id }}</td>
+        <td class="fw-bold">{{ r.score }}%</td>
+        <td>
+          <span class="badge" [ngClass]="riskBadgeClass(r.risk_level)">
             {{ r.risk_level || 'NORMAL' }}
           </span>
-      </td>
-      <td>{{ r.reason || '-' }}</td>
-      <td>{{ r.detected_at | date:'short' }}</td>
-      <td class="text-nowrap">
-        <button class="btn btn-sm btn-outline-success me-2"
-                (click)="review(r)">
-          Marquer “revu”
-        </button>
-      </td>
-    </tr>
+        </td>
+        <td>{{ r.reason || '-' }}</td>
+        <td>{{ r.detected_at | date:'short' }}</td>
+        <td class="text-nowrap">
+          <button class="btn btn-sm btn-outline-primary me-2" (click)="openDetails(r)">
+            Détails
+          </button>
+          <button class="btn btn-sm btn-outline-success" (click)="review(r)">
+            Marquer “revu”
+          </button>
+        </td>
+      </tr>
 
-    <tr *ngIf="!isLoading && rows.length === 0">
-      <td colspan="8" class="text-center text-muted py-4">
-        Aucun cas à afficher.
-      </td>
-    </tr>
-    </tbody>
-  </table>
+      <tr *ngIf="rows.length === 0">
+        <td colspan="8" class="text-center text-muted py-4">
+          Aucun cas à afficher.
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== Modal détails ===== -->
+  <div class="modal-backdrop fade show" *ngIf="detailOpen" style="display:block;"></div>
+  <div class="modal fade show" tabindex="-1" *ngIf="detailOpen" style="display:block;">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            Détails du cas — {{ selected?.entity_type }} {{ selected?.entity_id }}
+          </h5>
+          <button type="button" class="btn-close" (click)="closeDetails()"></button>
+        </div>
+
+        <div class="modal-body" *ngIf="selected as s">
+          <div class="d-flex align-items-center mb-3">
+            <div class="display-6 fw-bold me-3">{{ s.score }}%</div>
+            <span class="badge" [ngClass]="riskBadgeClass(s.risk_level)">
+              {{ s.risk_level }}
+            </span>
+          </div>
+
+          <p class="text-muted mb-3">
+            <strong>Raison :</strong> {{ s.reason || 'Analyse ML' }}
+          </p>
+
+          <ng-container *ngIf="s.risk_factors?.length">
+            <h6 class="mb-2">Facteurs de risque identifiés</h6>
+            <ul class="mb-3">
+              <li *ngFor="let f of s.risk_factors">{{ f }}</li>
+            </ul>
+          </ng-container>
+
+          <small class="text-muted">Détecté le {{ s.detected_at | date:'short' }}</small>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" (click)="closeDetails()">Fermer</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>

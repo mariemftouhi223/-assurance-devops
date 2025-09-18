@@ -3,11 +3,10 @@ spring:
     allow-bean-definition-overriding: true
     web-application-type: servlet
   datasource:
-    url: jdbc:mysql://localhost:3306/assurance?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    url: jdbc:mysql://host.docker.internal:3306/assurance?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
     password: ""
-    # Configuration de pool de connexions pour améliorer les performances
     hikari:
       connection-test-query: SELECT 1
       connection-timeout: 20000
@@ -17,31 +16,29 @@ spring:
       max-lifetime: 1200000
   jpa:
     hibernate:
-      ddl-auto: update  # Utilise 'create-drop' pour recréer la table si nécessaire
+      ddl-auto: none  # CHANGEZ update À create
     show-sql: true
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.MySQL8Dialect
-        # Améliorer les performances
+        # SOLUTION DÉFINITIVE - DIALECTE SPÉCIFIQUE
+        dialect: org.hibernate.dialect.MySQL57Dialect
+        # DÉSACTIVER COMPLÈTEMENT LA VÉRIFICATION DES MÉTADONNÉES
+        temp:
+          use_jdbc_metadata_defaults: false
         jdbc:
-          batch_size: 20
+          lob:
+            non_contextual_creation: true
         order_inserts: true
         order_updates: true
-
     database: mysql
-    # Afficher les statistiques Hibernate
     generate-ddl: true
-    jackson:
-      time-zone: Africa/Tunis
-      date-format: yyyy-MM-dd HH:mm:ss
 
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:9090/realms/assurance
-          jwk-set-uri: http://localhost:9090/realms/assurance/protocol/openid-connect/certs
+          jwk-set-uri: http://keycloak:8080/realms/assurance/protocol/openid-connect/certs
     cors:
       allowed-origins: "http://localhost:4200"
       allowed-methods: "*"
@@ -62,11 +59,12 @@ application:
 
 ml:
   v1:
-    base-url: http://localhost:5000
+    base-url: http://ml-fraud-service:5000
+
     endpoint: /predict
     timeout: 5000
   v2:
-    base-url: http://localhost:5001
+    base-url: http://ml-fraud-service-2:5001
     endpoint: /predict
     timeout: 5000
   service:
@@ -86,7 +84,6 @@ springdoc:
       client-id: swagger-client
       client-secret: 2UF4FU9DkfoeK2Nh1nW6UxQCnvZvX8my
 
-# ✅ PORT CORRIGÉ - Utilisez http://localhost:9099
 server:
   port: 9099
 
@@ -97,7 +94,6 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
     com.mariem.assurance.ml: TRACE
-    # Réduire le niveau de log pour éviter trop de verbosité
     org.springframework.web: INFO
     org.springframework.boot: INFO
     root: INFO
@@ -115,4 +111,7 @@ websocket:
   notification:
     endpoint: /ws/notifications
 
-
+# SOLUTION ALTERNATIVE SI BESOIN
+jackson:
+  time-zone: Africa/Tunis
+  date-format: yyyy-MM-dd HH:mm:ss

@@ -9,7 +9,7 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/v1/fraud/cases")
 @RequiredArgsConstructor
-@CrossOrigin // enlève si tu gères CORS ailleurs
+@CrossOrigin // enlÃ¨ve si tu gÃ¨res CORS ailleurs
 public class FraudCaseController {
     private final JdbcTemplate jdbc;
     private FraudCaseService fraudCaseService;
@@ -35,7 +35,7 @@ public class FraudCaseController {
         return jdbc.queryForList(base, args.toArray());
     }
 
-    // Optionnel : marquer comme “REVIEWED”
+    // Optionnel : marquer comme â€œREVIEWEDâ€
     @PatchMapping("/{id}")
     public void review(@PathVariable long id){
         jdbc.update("UPDATE fraud_cases SET status='REVIEWED' WHERE id=?", id);

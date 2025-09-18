@@ -1,70 +1,52 @@
 package com.mariem.assurance.service.fraud;
 
+import com.mariem.assurance.dto.fraud.FraudDetectionDTO;
 import com.mariem.assurance.dto.fraud.FraudPredictionRequest;
-import com.mariem.assurance.dto.fraud.FraudPredictionResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+@Slf4j
 @Service("fraudDetectionServiceImpl")
+@RequiredArgsConstructor
 public class FraudDetectionServiceImpl implements FraudDetectionService {
 
-    private static final Logger log = LoggerFactory.getLogger(FraudDetectionServiceImpl.class);
-
     private final RestTemplate restTemplate;
-    private final AlertService alertService;
 
-    @Autowired
-    public FraudDetectionServiceImpl(RestTemplate restTemplate, AlertService alertService) {
-        this.restTemplate = restTemplate;
-        this.alertService = alertService;
-    }
+    @Value("${ml.v1.base-url:http://ml-fraud-service:5000}")
+    private String baseUrl;
+
+    @Value("${ml.v1.endpoint:/predict}")
+    private String endpoint;
 
     @Override
-    public FraudPredictionResponse analyzeFraudRisk(FraudPredictionRequest request) {
+    public FraudDetectionDTO analyzeFraudRisk(FraudPredictionRequest req) {
+        String url = baseUrl + endpoint; // ex: http://ml-fraud-service:5000/predict
         try {
-            // Appels synchrones (plus simple à tester)
-            FraudPredictionResponse model1Response = restTemplate.postForObject(
-                    "http://localhost:5000/predict_model1",
-                    request,
-                    FraudPredictionResponse.class);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("clientData", req != null ? req.getClientData() : null);
+            body.put("contractData", req != null ? req.getContractData() : null);
+            body.put("source", (req != null && req.getSource() != null) ? req.getSource() : "ASSURE");
 
-            FraudPredictionResponse model2Response = restTemplate.postForObject(
-                    "http://localhost:5001/predict_model2",
-                    request,
-                    FraudPredictionResponse.class);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
-            // Vérification null-safe
-            boolean isFraud1 = model1Response != null
-                    && model1Response.getPrediction() != null
-                    && model1Response.getPrediction().isFraud();
-
-            boolean isFraud2 = model2Response != null
-                    && model2Response.getPrediction() != null
-                    && model2Response.getPrediction().isFraud();
-
-            if (isFraud1 && isFraud2) {
-                String contractId = request.getContractData().getContractId();
-                alertService.triggerAlert("FRAUD DETECTED for contract: " + contractId);
+            ResponseEntity<Map> resp = restTemplate.postForEntity(url, entity, Map.class);
+            if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
+                Map<String, Object> payload = resp.getBody();
+                return FraudDetectionService.toDTO(payload);
             }
-
-            return model1Response;
-
-        } catch (Exception e) {
-            log.error("Erreur lors de l'analyse des modèles ML", e);
-            return createErrorResponse();
+            log.warn("ML V1 non-200: {}", resp.getStatusCode());
+        } catch (Exception ex) {
+            log.warn("ML V1 call failed: {}", ex.toString());
         }
-    }
-
-    private FraudPredictionResponse createErrorResponse() {
-        FraudPredictionResponse response = new FraudPredictionResponse();
-        FraudPredictionResponse.Prediction prediction = new FraudPredictionResponse.Prediction();
-        prediction.setFraud(false);
-        prediction.setConfidence(0.0);
-        prediction.setFraudProbability(0.0);
-        response.setPrediction(prediction);
-        return response;
+        return null;
     }
 }

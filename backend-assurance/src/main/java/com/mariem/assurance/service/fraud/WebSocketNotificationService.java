@@ -26,7 +26,7 @@ public class WebSocketNotificationService {
         try {
             NotificationMessage notification = createFraudAlertNotification(alert);
             messagingTemplate.convertAndSend("/topic/fraud-alerts", notification);
-            log.info("Alerte de fraude {} envoyée via WebSocket", alert.getId());
+            log.info("Alerte de fraude {} envoyÃ©e via WebSocket", alert.getId());
         } catch (Exception e) {
             log.error("Erreur lors de l'envoi de l'alerte WebSocket {}: {}", alert.getId(), e.getMessage(), e);
         }
@@ -36,9 +36,9 @@ public class WebSocketNotificationService {
         try {
             NotificationMessage notification = createAlertStatusUpdateNotification(alert);
             messagingTemplate.convertAndSend("/topic/fraud-alerts", notification);
-            log.info("Mise à jour de statut d'alerte {} envoyée via WebSocket", alert.getId());
+            log.info("Mise Ã  jour de statut d'alerte {} envoyÃ©e via WebSocket", alert.getId());
         } catch (Exception e) {
-            log.error("Erreur lors de l'envoi de la mise à jour WebSocket: {}", e.getMessage(), e);
+            log.error("Erreur lors de l'envoi de la mise Ã  jour WebSocket: {}", e.getMessage(), e);
         }
     }
 
@@ -46,14 +46,14 @@ public class WebSocketNotificationService {
         try {
             NotificationMessage notification = new NotificationMessage();
             notification.setType("STATISTICS_UPDATE");
-            notification.setTitle("Statistiques mises à jour");
-            notification.setMessage("Les statistiques des alertes ont été mises à jour");
+            notification.setTitle("Statistiques mises Ã  jour");
+            notification.setMessage("Les statistiques des alertes ont Ã©tÃ© mises Ã  jour");
             notification.setData(statistics);
             notification.setTimestamp(LocalDateTime.now());
             notification.setPriority("INFO");
 
             messagingTemplate.convertAndSend("/topic/fraud-statistics", notification);
-            log.debug("Statistiques envoyées via WebSocket");
+            log.debug("Statistiques envoyÃ©es via WebSocket");
         } catch (Exception e) {
             log.error("Erreur lors de l'envoi des statistiques WebSocket: {}", e.getMessage(), e);
         }
@@ -70,7 +70,7 @@ public class WebSocketNotificationService {
             notification.setPriority("INFO");
 
             messagingTemplate.convertAndSend("/topic/notifications", notification);
-            log.debug("Notification {} envoyée via WebSocket", type);
+            log.debug("Notification {} envoyÃ©e via WebSocket", type);
         } catch (Exception e) {
             log.error("Erreur lors de l'envoi de notification WebSocket: {}", e.getMessage(), e);
         }
@@ -80,7 +80,7 @@ public class WebSocketNotificationService {
         NotificationMessage notification = new NotificationMessage();
         notification.setType("FRAUD_ALERT");
         notification.setTitle(String.format("Alerte Fraude [%s]", alert.getPriority()));
-        notification.setMessage(String.format("Fraude détectée - Contrat: %s, Probabilité: %.1f%%",
+        notification.setMessage(String.format("Fraude dÃ©tectÃ©e - Contrat: %s, ProbabilitÃ©: %.1f%%",
                 alert.getContractId(), alert.getFraudProbability() * 100));
         notification.setTimestamp(LocalDateTime.now());
         notification.setPriority(alert.getPriority());
@@ -112,8 +112,8 @@ public class WebSocketNotificationService {
     private NotificationMessage createAlertStatusUpdateNotification(FraudAlert alert) {
         NotificationMessage notification = new NotificationMessage();
         notification.setType("ALERT_STATUS_UPDATE");
-        notification.setTitle("Mise à jour d'alerte");
-        notification.setMessage(String.format("Alerte %s mise à jour - Nouveau statut: %s",
+        notification.setTitle("Mise Ã  jour d'alerte");
+        notification.setMessage(String.format("Alerte %s mise Ã  jour - Nouveau statut: %s",
                 alert.getId(), alert.getStatus()));
         notification.setTimestamp(LocalDateTime.now());
         notification.setPriority("INFO");

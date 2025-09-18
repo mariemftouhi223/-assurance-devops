@@ -1,52 +1,94 @@
 package com.mariem.assurance.dto.fraud;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
-import io.swagger.v3.oas.annotations.media.Schema;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Schema(description = "Requête de prédiction de fraude contenant les données du contrat et du client")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class FraudPredictionRequest {
 
-    @NotNull(message = "Les données du contrat sont obligatoires")
-    @Valid
-    @Schema(description = "Données du contrat d'assurance")
-    private ContractData contractData;
+    private ClientData clientData;     // requis
+    private ContractData contractData; // requis
+    private String source;             // "ASSURE" | "SINISTRE"
 
-    @NotNull(message = "Les données du client sont obligatoires")
-    @Valid
-    @Schema(description = "Données du client")
-    private ClientData clientData;
+    /** Fabrique conseillÃ©e : construit la requÃªte ML Ã  partir dâ€™un Assure */
+    public static FraudPredictionRequest fromAssure(com.mariem.assurance.assures.Assure a) {
+        if (a == null) return null;
 
-    // Constructeurs
-    public FraudPredictionRequest() {}
+        // ---- client ----
+        ClientData client = new ClientData();
+        client.setAgeConducteur(calcAge(a.getDateNaissance()));
+        client.setSexe(a.getSexe());
+        client.setVille(a.getVille());
+        client.setCodePostal(a.getCodePostal());
 
-    public FraudPredictionRequest(ContractData contractData, ClientData clientData) {
-        this.contractData = contractData;
-        this.clientData = clientData;
+        // ---- contrat ----
+        ContractData c = new ContractData();
+        c.setRc(nz(a.getRc()));
+        c.setDrec(nz(a.getDrec()));                    // <â€” important : getDrec() (bug corrigÃ© cÃ´tÃ© Assure)
+        c.setIncendie(nz(a.getIncendie()));
+        c.setVol(nz(a.getVol()));
+        c.setDommagesAuVehicule(nz(a.getDommagesAuVehicule()));
+        c.setDommagesEtCollision(nz(a.getDommagesEtCollision()));
+        c.setBrisDeGlaces(nz(a.getBrisDeGlaces()));
+        c.setPta(nz(a.getPta()));
+        c.setIndividuelleAccident(nz(a.getIndividuelleAccident()));
+        c.setCatastropheNaturelle(nz(a.getCatastropheNaturelle()));
+        c.setEmeuteMouvementPopulaire(nz(a.getEmeuteMouvementPopulaire()));
+        c.setVolRadioCassette(nz(a.getVolRadioCassette()));
+        c.setCarglass(nz(a.getCarglass()));
+        c.setAssistanceEtCarglass(nz(a.getAssistanceEtCarglass()));
+        c.setTotalTaxe(nz(a.getTotalTaxe()));
+        c.setFrais(nz(a.getFrais()));
+        c.setTotalPrimeNette(nz(a.getTotalPrimeNette()));
+        c.setCapitaleInc(nz(a.getCapitaleInc()));
+        c.setCapitaleVol(nz(a.getCapitaleVol()));
+        c.setCapitaleDv(nz(a.getCapitaleDv()));
+        c.setValeurCatalogue(nz(a.getValeurCatalogue()));
+        c.setValeurVenale(nz(a.getValeurVenale()));
+        c.setPuissance(parseIntSafe(a.getPuissance())); // "4" -> 4 (Integer)
+
+        return new FraudPredictionRequest(client, c, "ASSURE");
     }
 
-    // Getters et Setters
-    public ContractData getContractData() {
-        return contractData;
+    // ---------- helpers ----------
+    private static Double nz(Double v) { return v == null ? 0.0 : v; }
+
+    private static Integer parseIntSafe(String s){
+        try { return (s == null || s.isBlank()) ? null : Integer.parseInt(s.trim()); }
+        catch(Exception e){ return null; }
     }
 
-    public void setContractData(ContractData contractData) {
-        this.contractData = contractData;
-    }
+    private static Integer calcAge(String dateNaissance){
+        try{
+            if(dateNaissance == null || dateNaissance.isBlank()) return null;
 
-    public ClientData getClientData() {
-        return clientData;
-    }
+            String[] parts;
+            if (dateNaissance.contains("/")) parts = dateNaissance.split("/");
+            else if (dateNaissance.contains("-")) parts = dateNaissance.split("-");
+            else return null;
 
-    public void setClientData(ClientData clientData) {
-        this.clientData = clientData;
-    }
+            if (parts.length != 3) return null;
 
-    @Override
-    public String toString() {
-        return "FraudPredictionRequest{" +
-                "contractData=" + contractData +
-                ", clientData=" + clientData +
-                '}';
+            int day, month, year;
+            // yyyy-MM-dd ?
+            if (parts[0].length() == 4) {
+                year = Integer.parseInt(parts[0]); month = Integer.parseInt(parts[1]); day = Integer.parseInt(parts[2]);
+            } else {
+                day = Integer.parseInt(parts[0]); month = Integer.parseInt(parts[1]); year = Integer.parseInt(parts[2]);
+            }
+
+            java.time.LocalDate birth = java.time.LocalDate.of(year, month, day);
+            return java.time.Period.between(birth, java.time.LocalDate.now()).getYears();
+        } catch(Exception e){
+            System.err.println("Erreur calcul Ã¢ge pour date: " + dateNaissance + " - " + e.getMessage());
+            return null;
+        }
     }
 }

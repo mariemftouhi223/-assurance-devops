@@ -21,18 +21,18 @@ public class SinistreSearchService {
 
     public Page<Sinistre> searchSinistres(SinistreSearchCriteria criteria) {
         try {
-            System.out.println("🔍 Recherche avec critères: " + criteria);
+            System.out.println("ðŸ” Recherche avec critÃ¨res: " + criteria);
 
             Specification<Sinistre> spec = createSpecification(criteria);
             Pageable pageable = createPageable(criteria);
 
             Page<Sinistre> results = sinistreRepository.findAll(spec, pageable);
 
-            System.out.println("✅ " + results.getTotalElements() + " sinistres trouvés");
+            System.out.println("âœ… " + results.getTotalElements() + " sinistres trouvÃ©s");
 
             return results;
         } catch (Exception e) {
-            System.err.println("❌ Erreur dans la recherche: " + e.getMessage());
+            System.err.println("âŒ Erreur dans la recherche: " + e.getMessage());
             e.printStackTrace();
             throw e;
         }
@@ -43,7 +43,7 @@ public class SinistreSearchService {
             List<Predicate> predicates = new ArrayList<>();
 
             try {
-                // Critères de texte exact
+                // CritÃ¨res de texte exact
                 if (StringUtils.hasText(criteria.getNumContrat())) {
                     predicates.add(criteriaBuilder.like(
                             criteriaBuilder.lower(root.get("numContrat")),
@@ -93,7 +93,7 @@ public class SinistreSearchService {
                     predicates.add(criteriaBuilder.equal(root.get("codeResponsabilite"), criteria.getCodeResponsabilite()));
                 }
 
-                // Critères de dates - Date de déclaration
+                // CritÃ¨res de dates - Date de dÃ©claration
                 if (criteria.getDateDeclarationDebut() != null) {
                     predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("dateDeclaration"), criteria.getDateDeclarationDebut()));
                 }
@@ -101,7 +101,7 @@ public class SinistreSearchService {
                     predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("dateDeclaration"), criteria.getDateDeclarationFin()));
                 }
 
-                // Critères de dates - Date de survenance
+                // CritÃ¨res de dates - Date de survenance
                 if (criteria.getDateSurvenanceDebut() != null) {
                     predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("dateSurvenance"), criteria.getDateSurvenanceDebut()));
                 }
@@ -109,7 +109,7 @@ public class SinistreSearchService {
                     predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("dateSurvenance"), criteria.getDateSurvenanceFin()));
                 }
 
-                // Critères de dates - Date d'ouverture
+                // CritÃ¨res de dates - Date d'ouverture
                 if (criteria.getDateOuvertureDebut() != null) {
                     predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("dateOuverture"), criteria.getDateOuvertureDebut()));
                 }
@@ -117,7 +117,7 @@ public class SinistreSearchService {
                     predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("dateOuverture"), criteria.getDateOuvertureFin()));
                 }
 
-                // Critères de montants - Montant d'évaluation
+                // CritÃ¨res de montants - Montant d'Ã©valuation
                 if (criteria.getMontantEvaluationMin() != null) {
                     predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("montantEvaluation"), criteria.getMontantEvaluationMin()));
                 }
@@ -125,7 +125,7 @@ public class SinistreSearchService {
                     predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("montantEvaluation"), criteria.getMontantEvaluationMax()));
                 }
 
-                // Critères de montants - Total règlement
+                // CritÃ¨res de montants - Total rÃ¨glement
                 if (criteria.getTotalReglementMin() != null) {
                     predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("totalReglement"), criteria.getTotalReglementMin()));
                 }
@@ -133,7 +133,7 @@ public class SinistreSearchService {
                     predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("totalReglement"), criteria.getTotalReglementMax()));
                 }
 
-                // Critères numériques - Nombre de blessés
+                // CritÃ¨res numÃ©riques - Nombre de blessÃ©s
                 if (criteria.getNombreBlessesMin() != null) {
                     predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("nombreBlesses"), criteria.getNombreBlessesMin()));
                 }
@@ -141,7 +141,7 @@ public class SinistreSearchService {
                     predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("nombreBlesses"), criteria.getNombreBlessesMax()));
                 }
 
-                // Critères numériques - Nombre de décès
+                // CritÃ¨res numÃ©riques - Nombre de dÃ©cÃ¨s
                 if (criteria.getNombreDecesMin() != null) {
                     predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("nombreDeces"), criteria.getNombreDecesMin()));
                 }
@@ -155,7 +155,7 @@ public class SinistreSearchService {
 
                     List<Predicate> textPredicates = new ArrayList<>();
 
-                    // Recherche dans les champs texte avec vérification de nullité
+                    // Recherche dans les champs texte avec vÃ©rification de nullitÃ©
                     textPredicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("numSinistre")), searchPattern));
 
                     textPredicates.add(criteriaBuilder.like(
@@ -198,7 +198,7 @@ public class SinistreSearchService {
                 }
 
             } catch (Exception e) {
-                System.err.println("❌ Erreur dans la création des prédicats: " + e.getMessage());
+                System.err.println("âŒ Erreur dans la crÃ©ation des prÃ©dicats: " + e.getMessage());
                 e.printStackTrace();
             }
 
@@ -210,7 +210,7 @@ public class SinistreSearchService {
 
     private Pageable createPageable(SinistreSearchCriteria criteria) {
         try {
-            // Valeurs par défaut sécurisées
+            // Valeurs par dÃ©faut sÃ©curisÃ©es
             String sortBy = (criteria.getSortBy() != null && !criteria.getSortBy().trim().isEmpty())
                     ? criteria.getSortBy()
                     : "dateDeclaration";
@@ -232,20 +232,20 @@ public class SinistreSearchService {
                     sortBy
             );
 
-            System.out.println("📄 Pagination: page=" + page + ", size=" + size + ", sort=" + sortBy + " " + sortDirection);
+            System.out.println("ðŸ“„ Pagination: page=" + page + ", size=" + size + ", sort=" + sortBy + " " + sortDirection);
 
             return PageRequest.of(page, size, sort);
 
         } catch (Exception e) {
-            System.err.println("❌ Erreur dans la création de la pagination: " + e.getMessage());
+            System.err.println("âŒ Erreur dans la crÃ©ation de la pagination: " + e.getMessage());
             e.printStackTrace();
 
-            // Pagination par défaut en cas d'erreur
+            // Pagination par dÃ©faut en cas d'erreur
             return PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "dateDeclaration"));
         }
     }
 
-    // ✅ MÉTHODE UTILITAIRE: Recherche simple par texte
+    // âœ… MÃ‰THODE UTILITAIRE: Recherche simple par texte
     public Page<Sinistre> searchByText(String searchText, int page, int size) {
         SinistreSearchCriteria criteria = new SinistreSearchCriteria();
         criteria.setSearchText(searchText);
@@ -257,7 +257,7 @@ public class SinistreSearchService {
         return searchSinistres(criteria);
     }
 
-    // ✅ MÉTHODE UTILITAIRE: Recherche par nature
+    // âœ… MÃ‰THODE UTILITAIRE: Recherche par nature
     public Page<Sinistre> searchByNature(String natureSinistre, int page, int size) {
         SinistreSearchCriteria criteria = new SinistreSearchCriteria();
         criteria.setNatureSinistre(natureSinistre);
@@ -269,7 +269,7 @@ public class SinistreSearchService {
         return searchSinistres(criteria);
     }
 
-    // ✅ MÉTHODE UTILITAIRE: Recherche par état
+    // âœ… MÃ‰THODE UTILITAIRE: Recherche par Ã©tat
     public Page<Sinistre> searchByEtat(String libEtatSinistre, int page, int size) {
         SinistreSearchCriteria criteria = new SinistreSearchCriteria();
         criteria.setLibEtatSinistre(libEtatSinistre);
@@ -281,7 +281,7 @@ public class SinistreSearchService {
         return searchSinistres(criteria);
     }
 
-    // ✅ MÉTHODE UTILITAIRE: Recherche par année
+    // âœ… MÃ‰THODE UTILITAIRE: Recherche par annÃ©e
     public Page<Sinistre> searchByAnnee(Integer anneeExercice, int page, int size) {
         SinistreSearchCriteria criteria = new SinistreSearchCriteria();
         criteria.setAnneeExercice(anneeExercice);

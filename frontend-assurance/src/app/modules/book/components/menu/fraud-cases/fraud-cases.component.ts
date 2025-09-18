@@ -4,7 +4,6 @@ import { FraudCasesService, FraudCase } from 'app/services/fraud-cases.service';
 @Component({
   selector: 'app-fraud-cases',
   templateUrl: './fraud-cases.component.html',
-  // on enlève le SCSS pour éviter l’erreur de loader
   styleUrls: []
 })
 export class FraudCasesComponent implements OnInit {
@@ -13,21 +12,22 @@ export class FraudCasesComponent implements OnInit {
   error: string | null = null;
 
   // Filtres UI
-  filterEntity: 'ALL' | 'ASSURE' | 'SINISTRE' = 'ALL';
+  filterEntity: 'ALL' | 'ASSURE' | 'SINISTRE' = 'ALL'; // ← PAR DÉFAUT: TOUS
   status: 'OPEN' | 'REVIEWED' | 'DISMISSED' | 'CONFIRMED' | 'RESOLVED' = 'OPEN';
   minScore = 50;
 
+  // Modal détails
+  detailOpen = false;
+  selected: FraudCase | null = null;
+
   constructor(private svc: FraudCasesService) {}
 
-  ngOnInit(): void {
-    this.load();
-  }
+  ngOnInit(): void { this.load(); }
 
   load(): void {
     this.isLoading = true;
     this.error = null;
 
-    // ⚠️ utilise getCases (pas list)
     this.svc.getCases(this.minScore, this.status, this.filterEntity)
       .subscribe({
         next: (data) => {
@@ -42,15 +42,33 @@ export class FraudCasesComponent implements OnInit {
       });
   }
 
-  // On passe la LIGNE complète depuis le template pour éviter le "number | undefined"
   review(row: FraudCase): void {
-    if (!row?.id) { return; } // en fallback localStorage, id est généré; si absent, on ignore
+    if (!row?.id) return;
     this.svc.markReviewed(row.id).subscribe({
       next: () => this.load(),
       error: () => this.load()
     });
   }
 
-  // trackBy pour le *ngFor
-  trackById = (_: number, r: FraudCase) => r.id ?? `${r.entity_type}-${r.entity_id}-${r.detected_at}`;
+  openDetails(row: FraudCase): void {
+    this.selected = row;
+    this.detailOpen = true;
+  }
+  closeDetails(): void {
+    this.detailOpen = false;
+    this.selected = null;
+  }
+
+  riskBadgeClass(level?: FraudCase['risk_level']): string {
+    switch (level) {
+      case 'CRITICAL': return 'bg-danger text-white';
+      case 'HIGH':     return 'bg-warning text-dark';
+      case 'MEDIUM':   return 'bg-primary text-white';
+      case 'LOW':      return 'bg-success text-white';
+      default:         return 'bg-success text-white';
+    }
+  }
+
+  trackById = (_: number, r: FraudCase) =>
+    r.id ?? `${r.entity_type}-${r.entity_id}-${r.detected_at}`;
 }

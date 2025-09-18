@@ -18,9 +18,9 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/fraud/alerts") // Préfixe API standardisé
+@RequestMapping("/api/v1/fraud/alerts") // PrÃ©fixe API standardisÃ©
 @Tag(name = "Fraud Alerts", description = "API de gestion des alertes de fraude")
-@SecurityRequirement(name = "bearerAuth") // Sécurité globale
+@SecurityRequirement(name = "bearerAuth") // SÃ©curitÃ© globale
 public class FraudAlertController {
 
     private static final Logger log = LoggerFactory.getLogger(FraudAlertController.class);
@@ -30,7 +30,7 @@ public class FraudAlertController {
         this.alertService = alertService;
     }
 
-    // Endpoints publics (explicitement marqués)
+    // Endpoints publics (explicitement marquÃ©s)
     @GetMapping("/public/health")
     @Operation(summary = "Health check (public)")
     public ResponseEntity<Map<String, Object>> healthCheck() {
@@ -46,12 +46,12 @@ public class FraudAlertController {
         }
     }
 
-    // Endpoints protégés
+    // Endpoints protÃ©gÃ©s
     @PostMapping
-    @Operation(summary = "Créer une alerte de fraude")
+    @Operation(summary = "CrÃ©er une alerte de fraude")
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Alerte créée"),
-            @ApiResponse(responseCode = "400", description = "Données invalides")
+            @ApiResponse(responseCode = "201", description = "Alerte crÃ©Ã©e"),
+            @ApiResponse(responseCode = "400", description = "DonnÃ©es invalides")
     })
     public ResponseEntity<FraudAlert> createAlert(@RequestBody FraudAlert newAlert) {
         try {
@@ -62,7 +62,7 @@ public class FraudAlertController {
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(alertService.saveAlert(newAlert));
         } catch (Exception e) {
-            log.error("Erreur création alerte: {}", e.getMessage());
+            log.error("Erreur crÃ©ation alerte: {}", e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -78,10 +78,10 @@ public class FraudAlertController {
         }
     }
 
-    // Méthodes restantes avec le même pattern...
-    // - Tous les endpoints protégés sauf /public/*
-    // - Logging cohérent
-    // - Gestion d'erreurs standardisée
+    // MÃ©thodes restantes avec le mÃªme pattern...
+    // - Tous les endpoints protÃ©gÃ©s sauf /public/*
+    // - Logging cohÃ©rent
+    // - Gestion d'erreurs standardisÃ©e
 
     private boolean isValidStatus(String status) {
         return List.of("NEW", "IN_REVIEW", "REVIEWED", "CLOSED", "FALSE_POSITIVE")

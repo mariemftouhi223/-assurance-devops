@@ -11,11 +11,11 @@ import java.util.Optional;
 public interface AssureRepository extends JpaRepository<Assure, Long> {
 
 
-    // JpaRepository fournit déjà findAll(Pageable) qui gère la pagination et le tri.
-    // Aucune modification n'est nécessaire ici pour le problème de tri/pagination,
-    // mais je fournis le fichier complet pour la clarté.
+    // JpaRepository fournit dÃ©jÃ  findAll(Pageable) qui gÃ¨re la pagination et le tri.
+    // Aucune modification n'est nÃ©cessaire ici pour le problÃ¨me de tri/pagination,
+    // mais je fournis le fichier complet pour la clartÃ©.
 
-    // Méthodes de recherche personnalisées si nécessaire
+    // MÃ©thodes de recherche personnalisÃ©es si nÃ©cessaire
 
     List<Assure> findByAnneeExercice(Integer anneeExercice);
 

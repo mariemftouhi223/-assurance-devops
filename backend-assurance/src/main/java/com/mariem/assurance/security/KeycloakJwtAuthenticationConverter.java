@@ -34,7 +34,7 @@ public class KeycloakJwtAuthenticationConverter implements Converter<Jwt, Abstra
         Set<GrantedAuthority> authorities = new HashSet<>();
 
         try {
-            // Extraire les rôles du realm
+            // Extraire les rÃ´les du realm
             if (jwt.getClaim("realm_access") != null) {
                 Map<String, Object> realmAccess = jwt.getClaim("realm_access");
                 if (realmAccess.containsKey("roles")) {
@@ -45,10 +45,10 @@ public class KeycloakJwtAuthenticationConverter implements Converter<Jwt, Abstra
                 }
             }
 
-            // Extraire les rôles du client
+            // Extraire les rÃ´les du client
             Map<String, Object> resourceAccess = jwt.getClaim("resource_access");
             if (resourceAccess != null) {
-                // Vérifier les rôles pour le client swagger-client
+                // VÃ©rifier les rÃ´les pour le client swagger-client
                 if (resourceAccess.containsKey("swagger-client")) {
                     Map<String, Object> clientAccess = (Map<String, Object>) resourceAccess.get("swagger-client");
                     if (clientAccess != null && clientAccess.containsKey("roles")) {
@@ -59,7 +59,7 @@ public class KeycloakJwtAuthenticationConverter implements Converter<Jwt, Abstra
                     }
                 }
 
-                // Vérifier aussi les rôles pour le client assurance si nécessaire
+                // VÃ©rifier aussi les rÃ´les pour le client assurance si nÃ©cessaire
                 if (resourceAccess.containsKey("assurance")) {
                     Map<String, Object> clientAccess = (Map<String, Object>) resourceAccess.get("assurance");
                     if (clientAccess != null && clientAccess.containsKey("roles")) {
@@ -71,13 +71,13 @@ public class KeycloakJwtAuthenticationConverter implements Converter<Jwt, Abstra
                 }
             }
 
-            // Ajouter un rôle par défaut pour éviter les problèmes d'autorisation
+            // Ajouter un rÃ´le par dÃ©faut pour Ã©viter les problÃ¨mes d'autorisation
             authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
 
         } catch (Exception e) {
             System.err.println("Error extracting roles from JWT: " + e.getMessage());
             e.printStackTrace();
-            // Ajouter un rôle par défaut en cas d'erreur
+            // Ajouter un rÃ´le par dÃ©faut en cas d'erreur
             authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
         }
 

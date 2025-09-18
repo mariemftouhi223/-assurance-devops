@@ -102,8 +102,12 @@ export class SinistresComponent implements OnInit, OnDestroy {
   selectedUsage = '';
   fraudFilter = '';
 
+  /* ===== Filtres front-only (score ML) ===== */
+  showOnlyHigh = false;
+  riskThreshold = 50;
+
   /* ===== ML / Notifications ===== */
-  private seenNotifications = new Set<string>();      // anti-doublons
+  private seenNotifications = new Set<string>();
   fraudResults: Map<string, FraudDetection> = new Map();
   fraudNotifications: FraudNotification[] = [];
   showNotifications = true;
@@ -122,12 +126,16 @@ export class SinistresComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   /** ✅ API Spring via proxy → 9099 (Angular proxy) */
-  private readonly API = '/api/v1/sinistres';
-  // Si pas de proxy, mets: private readonly API = 'http://localhost:9099/api/v1/sinistres';
+  private readonly API = '/api/v1/sinistres/all';
+  // Si pas de proxy: private readonly API = 'http://localhost:9099/api/v1/sinistres';
 
-  /** ====== Champs AJOUT (pour le petit formulaire inline) ====== */
+  /** ====== Ajout (formulaire) ====== */
   showAddForm = false;
   newSinistre: Partial<SinistreAvecML> = this.defaultDraftForForm();
+
+  /** ====== État du modal DÉTAILS ====== */
+  detailOpen = false;
+  selected: SinistreAvecML | null = null;
 
   constructor(
     private cdr: ChangeDetectorRef,
@@ -230,75 +238,21 @@ export class SinistresComponent implements OnInit, OnDestroy {
         this.http.get<ApiResponseML>(this.API, { params })
       );
 
-      this.sinistres = (page.content ?? []).map(x => ({ ...x }));
+      // Normalisation des montants
+      this.sinistres = (page.content ?? []).map(x => this.normalizeRow(x));
       this.totalElements = page.totalElements ?? this.sinistres.length;
       this.totalPages = page.totalPages ?? Math.ceil(this.totalElements / this.pageSize);
 
       this.processFraudResults();
       this.updateStatistiques();
 
-    } catch {
-      await this.simulateApiCall();
+    } catch (e) {
+      this.error = this.humanHttpError(e) ?? 'Erreur API';
+      return;
     } finally {
       this.loading = false;
       this.cdr.markForCheck();
     }
-  }
-
-  // =======================
-  // ======= MOCK ==========
-  // =======================
-
-  private async simulateApiCall(): Promise<void> {
-    return new Promise(resolve => {
-      setTimeout(() => {
-        this.sinistres = this.generateMockData();
-        this.totalElements = 1000;
-        this.totalPages = Math.ceil(this.totalElements / this.pageSize);
-        this.processFraudResults();
-        this.updateStatistiques();
-        resolve();
-      }, 300);
-    });
-  }
-
-  private generateMockData(): SinistreAvecML[] {
-    const out: SinistreAvecML[] = [];
-    for (let i = 0; i < this.pageSize; i++) {
-      const fraudScore = Math.floor(Math.random() * 100);
-      const isFraud = fraudScore > 50;
-      out.push({
-        numSinistre: `SIN${new Date().getFullYear()}${String(i + 1).padStart(6, '0')}`,
-        anneeExercice: new Date().getFullYear(),
-        numContrat: `CNT${String(i + 1).padStart(8, '0')}`,
-        dateDeclaration: new Date(),
-        natureSinistre: ['CORPOREL', 'MATERIEL', 'MIXTE'][Math.floor(Math.random() * 3)],
-        typeSinistre: ['COLLISION', 'VOL', 'INCENDIE'][Math.floor(Math.random() * 3)],
-        libEtatSinistre: ['CLOTURE', 'MISE A JOUR', 'REPRISE'][Math.floor(Math.random() * 3)],
-        montantEvaluation: `${(Math.random() * 50000).toFixed(2)} DT`,
-        montantEvaluationBrut: Math.random() * 50000,
-        totalReglement: `${(Math.random() * 40000).toFixed(2)} DT`,
-        totalReglementBrut: Math.random() * 40000,
-        lieuAccident: ['Tunis', 'Sfax', 'Sousse', 'Bizerte'][Math.floor(Math.random() * 4)],
-        gouvernorat: ['Tunis', 'Sfax', 'Sousse', 'Bizerte'][Math.floor(Math.random() * 4)],
-        compagnieAdverse: ['STAR', 'GAT', 'MAGHREBIA'][Math.floor(Math.random() * 3)],
-        usage: ['PRIVE', 'COMMERCIAL', 'TAXI'][Math.floor(Math.random() * 3)],
-        priorite: 'NORMALE',
-        fraudDetection: {
-          isFraud,
-          confidence: fraudScore / 100,
-          riskLevel: fraudScore > 80 ? 'CRITICAL' : fraudScore > 60 ? 'HIGH' : fraudScore > 40 ? 'MEDIUM' : 'LOW',
-          reason: isFraud ? 'Anomalies détectées par ML' : 'Profil normal',
-          fraudScore,
-          alertLevel: fraudScore > 80 ? 'CRITICAL' : fraudScore > 60 ? 'HIGH' : 'MEDIUM',
-          alertIcon: fraudScore > 80 ? 'fas fa-exclamation-triangle' : fraudScore > 60 ? 'fas fa-exclamation-circle' : 'fas fa-check-circle',
-          alertColor: fraudScore > 80 ? '#dc2626' : fraudScore > 60 ? '#f59e0b' : fraudScore > 40 ? '#3b82f6' : '#10b981',
-          riskFactors: isFraud ? ['Montant élevé', 'Délai suspect'] : [],
-          recommendation: isFraud ? 'Vérification recommandée' : 'Aucune action requise'
-        }
-      });
-    }
-    return out;
   }
 
   // =======================
@@ -311,7 +265,7 @@ export class SinistresComponent implements OnInit, OnDestroy {
 
     this.sinistres.forEach(s => {
       const r = s.fraudDetection;
-      this.fraudResults.set(s.numSinistre, r);
+      if (r) this.fraudResults.set(s.numSinistre, r);
 
       if (r?.isFraud) {
         fraudulentCount++;
@@ -458,35 +412,34 @@ export class SinistresComponent implements OnInit, OnDestroy {
     URL.revokeObjectURL(url);
   }
 
-  voirSinistre(s: SinistreAvecML): void { this.showSinistreDetails(s); }
+  // Ouvre la modale de détails
+  voirSinistre(s: SinistreAvecML): void { this.openDetails(s); }
 
+  // ✅ maintenant on ouvre la modale (plus d'alert)
   showFraudDetails(s: SinistreAvecML): void {
-    const r = s.fraudDetection;
-    if (!r) return;
-    const msg = `🚨 DÉTAILS FRAUDE (ML)\n\n` +
-      `Sinistre: ${s.numSinistre}\nContrat: ${s.numContrat}\nNature: ${s.natureSinistre}\n` +
-      `Score: ${r.fraudScore}% (${r.riskLevel}) — Confiance: ${Math.round(r.confidence * 100)}%\n` +
-      `Raison: ${r.reason}\n\nMontant évaluation: ${s.montantEvaluation}\nTotal règlement: ${s.totalReglement}\n\n` +
-      `Recommandation: ${r.recommendation || 'Vérification recommandée'}`;
-    alert(msg);
+    this.openDetails(s);
   }
 
-  showSinistreDetails(s: SinistreAvecML): void {
-    const r = s.fraudDetection;
-    const statusIcon = r?.isFraud ? '🚨' : '✅';
-    const statusText = r?.isFraud ? 'FRAUDE DÉTECTÉE' : 'SINISTRE NORMAL';
-    const msg = `${statusIcon} DÉTAILS DU SINISTRE\n\n` +
-      `N°: ${s.numSinistre}\nContrat: ${s.numContrat}\nDate: ${this.formatDate(s.dateDeclaration)}\n` +
-      `Nature: ${s.natureSinistre}\nType: ${s.typeSinistre}\nÉtat: ${s.libEtatSinistre}\n` +
-      `Lieu: ${s.lieuAccident}\nGouvernorat: ${s.gouvernorat}\n\n` +
-      `Montant évaluation: ${s.montantEvaluation}\nTotal règlement: ${s.totalReglement}\n\n` +
-      `Statut ML: ${statusText}`;
-    alert(msg);
-  }
+  // ✅ appelé depuis les notifications
+  async showFraudDetailsFromNotification(id: string): Promise<void> {
+    if (!id) return;
 
-  showFraudDetailsFromNotification(id: string): void {
-    const s = this.sinistres.find(x => x.numSinistre === id);
-    if (s) this.showFraudDetails(s);
+    // 1) Dans la liste déjà affichée ?
+    const local = this.sinistres.find(x => x.numSinistre === id);
+    if (local) { this.openDetails(local); return; }
+
+    // 2) Sinon, on va le chercher côté API
+    try {
+      const criteria = { numSinistre: id, page: 0, size: 1 };
+      const res: any = await firstValueFrom(
+        this.http.post(`${this.API_ROOT}/search`, criteria)
+      );
+      const hit = (res?.content || res?.data || [])[0];
+      if (hit) this.openDetails(this.normalizeRow(hit));
+      else this.error = "Sinistre introuvable pour cette alerte.";
+    } catch (e) {
+      this.error = this.humanHttpError(e) ?? 'Impossible de charger le détail du sinistre.';
+    }
   }
 
   dismissNotification(id: string): void {
@@ -532,40 +485,61 @@ export class SinistresComponent implements OnInit, OnDestroy {
   getFraudIcon(n: string): string { return this.fraudResults.get(n)?.alertIcon || 'fas fa-check-circle'; }
   getFraudColor(n: string): string { return this.fraudResults.get(n)?.alertColor || '#6b7280'; }
 
-  // ====== AJOUT : méthodes attendues par le HTML ======
-  onClickAjouter(): void {
-    this.showAddForm = true;
-    this.newSinistre = this.defaultDraftForForm();
+  // ===== Modal DÉTAILS =====
+  openDetails(s: SinistreAvecML): void {
+    this.selected = s;
+    this.detailOpen = true;
   }
 
-  submitAddForm(): void {
-    if (!this.newSinistre?.numSinistre || !String(this.newSinistre.numSinistre).trim()) {
-      this.error = 'Le N° de sinistre est obligatoire.'; return;
+  closeDetails(): void {
+    this.detailOpen = false;
+    this.selected = null;
+  }
+
+  getSelectedScore(): number {
+    return Math.round(this.selected?.fraudDetection?.fraudScore ?? 0);
+  }
+
+  riskClass(level?: string): string {
+    switch ((level || 'NORMAL').toUpperCase()) {
+      case 'CRITICAL': return 'bg-danger text-white';
+      case 'HIGH':     return 'bg-warning text-dark';
+      case 'MEDIUM':   return 'bg-info text-dark';
+      case 'LOW':      return 'bg-secondary text-white';
+      default:         return 'bg-success text-white';
     }
-    const payload: Partial<SinistreAvecML> = {
-      ...this.newSinistre,
-      dateDeclaration: this.toIso(this.newSinistre.dateDeclaration as any)
-    };
-    this.createSinistre(payload).then(() => {
-      this.showAddForm = false;
-      this.newSinistre = this.defaultDraftForForm();
-    });
   }
 
-  cancelAddForm(): void {
-    this.showAddForm = false;
-    this.newSinistre = this.defaultDraftForForm();
-    this.error = null;
+  /** ---------- Normalisation montants ---------- */
+  private parseMoney(input: any): number {
+    if (typeof input === 'number') return input;
+    if (input == null) return 0;
+    const s = String(input)
+      .replace(/\s+/g, '')
+      .replace(/[^\d,.\-]/g, '')
+      .replace(/,/g, '.');
+    const n = Number(s);
+    return isNaN(n) ? 0 : n;
   }
 
-  genererNumero(): void {
-    const now = new Date();
-    const y = now.getFullYear();
-    const rnd = Math.floor(100000 + Math.random() * 899999);
-    this.newSinistre.numSinistre = `SIN${y}${rnd}`;
+  private normalizeRow(row: any): any {
+    const s = { ...row };
+    s.montantEvaluationBrut = this.parseMoney(s.montantEvaluationBrut ?? s.montantEvaluation);
+    s.totalReglementBrut    = this.parseMoney(s.totalReglementBrut ?? s.totalReglement);
+    s.montantEvaluation = this.formatMontant(s.montantEvaluationBrut ?? 0);
+    s.totalReglement    = this.formatMontant(s.totalReglementBrut ?? 0);
+    return s;
   }
 
-  // ====== Helpers CRUD (dates & payload) ======
+  /** -------- Getter pour le tableau (filtre score) -------- */
+  get tableData(): SinistreAvecML[] {
+    const list = this.sinistres || [];
+    if (!this.showOnlyHigh) return list;
+    const thr = Number(this.riskThreshold) || 0;
+    return list.filter(s => (s.fraudDetection?.fraudScore ?? 0) >= thr);
+  }
+
+  // ===== Helpers CRUD (formulaire) =====
   private defaultDraft(): Partial<SinistreAvecML> {
     return {
       numSinistre: 'SIN' + Date.now(),
@@ -591,7 +565,6 @@ export class SinistresComponent implements OnInit, OnDestroy {
     };
   }
 
-  /** Brouillon adapté au formulaire (date en yyyy-MM-dd attendu par <input type="date">) */
   private defaultDraftForForm(): Partial<SinistreAvecML> {
     const today = this.toIso(new Date())!;
     return {
@@ -604,7 +577,6 @@ export class SinistresComponent implements OnInit, OnDestroy {
     if (!d) return undefined;
     const dd = d instanceof Date ? d : new Date(d);
     if (isNaN(dd.getTime())) return undefined;
-    // version locale (pas de décalage UTC)
     const y = dd.getFullYear();
     const m = (dd.getMonth() + 1).toString().padStart(2, '0');
     const day = dd.getDate().toString().padStart(2, '0');
@@ -629,7 +601,6 @@ export class SinistresComponent implements OnInit, OnDestroy {
       compagnieAdverse: s.compagnieAdverse ?? undefined,
       usage: s.usage ?? undefined,
       priorite: s.priorite ?? 'NORMALE'
-      // (on ne poste pas les champs ML au backend)
     };
   }
 
@@ -640,5 +611,43 @@ export class SinistresComponent implements OnInit, OnDestroy {
       return `${e.status} - ${msg || 'Erreur inconnue'}`;
     }
     return e?.message || null;
+  }
+
+  onClickAjouter(): void {
+    this.showAddForm = true;
+    this.newSinistre = this.defaultDraftForForm();
+  }
+
+  submitAddForm(): void {
+    if (!this.newSinistre?.numSinistre || !String(this.newSinistre.numSinistre).trim()) {
+      this.error = 'Le N° de sinistre est obligatoire.';
+      return;
+    }
+    const payload: Partial<SinistreAvecML> = {
+      ...this.newSinistre,
+      dateDeclaration: this.toIso(this.newSinistre.dateDeclaration as any)
+    };
+    this.createSinistre(payload).then(() => {
+      this.showAddForm = false;
+      this.newSinistre = this.defaultDraftForForm();
+    });
+  }
+
+  cancelAddForm(): void {
+    this.showAddForm = false;
+    this.newSinistre = this.defaultDraftForForm();
+    this.error = null;
+  }
+
+  genererNumero(): void {
+    const now = new Date();
+    const y = now.getFullYear();
+    const rnd = Math.floor(100000 + Math.random() * 899999);
+    this.newSinistre.numSinistre = `SIN${y}${rnd}`;
+  }
+
+  /** ✅ racine d'API sans /all */
+  private get API_ROOT(): string {
+    return this.API.replace(/\/all$/, '');
   }
 }

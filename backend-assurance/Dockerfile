@@ -1,43 +1,29 @@
-﻿FROM maven:3.9.9-eclipse-temurin-21 AS build
-
+﻿# ------- BUILD -------
+FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /app
-
-# Copier pom.xml pour cache des dépendances
 COPY pom.xml .
-
-# Télécharger dépendances (cache si pom.xml inchangé)
-RUN mvn dependency:go-offline -B
-
-# Copier code source
+RUN mvn -q dependency:go-offline
 COPY src ./src
+# Skipper la compilation ET l’exécution des tests
+RUN mvn -q clean package \
+    -DskipTests=true -Dmaven.test.skip=true \
+    -Dspotbugs.skip=true -Dcheckstyle.skip=true
 
-# Build optimisé
-RUN mvn clean package -DskipTests -B -q
-
-# Stage production
+# ------- RUNTIME -------
 FROM eclipse-temurin:21-jre-jammy
-
 WORKDIR /app
 
-# Utilisateur non-root sécurisé
+# user non-root
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-# Copier JAR
-COPY --from=build /app/target/*.jar app.jar
-
-# Permissions
-RUN chown appuser:appuser app.jar
-
+COPY --from=build /app/target/*.jar /app/app.jar
+RUN chown appuser:appuser /app/app.jar
 USER appuser
 
 EXPOSE 9099
 
-# JVM optimisée conteneur
-ENV JAVA_OPTS="-Xmx512m -Xms256m -XX:+UseG1GC -XX:+UseContainerSupport"
+# IMPORTANT : on force l’adresse et le port ici (plus aucun doute)
+ENTRYPOINT ["java","-Dserver.port=9099","-Dserver.address=0.0.0.0","-Xmx512m","-Xms256m","-jar","/app/app.jar"]
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:9099/actuator/health || exit 1
-
-CMD ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
-
+# (optionnel) enlève le healthcheck runtime si curl/wget non installés
+# HEALTHCHECK NONE

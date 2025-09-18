@@ -14,7 +14,7 @@ import java.util.List;
 @Repository
 public interface SinistreRepository extends JpaRepository<Sinistre, String>,JpaSpecificationExecutor<Sinistre> {
 
-    // ✅ REQUÊTES OPTIMISÉES POUR LES COLONNES IMPORTANTES
+    // âœ… REQUÃŠTES OPTIMISÃ‰ES POUR LES COLONNES IMPORTANTES
 
     /**
      * Recherche par nature de sinistre
@@ -23,7 +23,7 @@ public interface SinistreRepository extends JpaRepository<Sinistre, String>,JpaS
     Page<Sinistre> findByNatureSinistreContainingIgnoreCase(String natureSinistre, Pageable pageable);
 
     /**
-     * Recherche par état de sinistre
+     * Recherche par Ã©tat de sinistre
      */
     long countByLibEtatSinistre(String libEtatSinistre);
     Page<Sinistre> findByLibEtatSinistreContainingIgnoreCase(String libEtatSinistre, Pageable pageable);
@@ -35,7 +35,7 @@ public interface SinistreRepository extends JpaRepository<Sinistre, String>,JpaS
     Page<Sinistre> findByTypeSinistreContainingIgnoreCase(String typeSinistre, Pageable pageable);
 
     /**
-     * Recherche par année d'exercice
+     * Recherche par annÃ©e d'exercice
      */
     Page<Sinistre> findByAnneeExercice(Integer anneeExercice, Pageable pageable);
 
@@ -43,7 +43,7 @@ public interface SinistreRepository extends JpaRepository<Sinistre, String>,JpaS
     List<Object[]> countByAnneeExercice();
 
     /**
-     * Recherche par numéro de contrat
+     * Recherche par numÃ©ro de contrat
      */
     Page<Sinistre> findByNumContratContainingIgnoreCase(String numContrat, Pageable pageable);
 
@@ -72,16 +72,16 @@ public interface SinistreRepository extends JpaRepository<Sinistre, String>,JpaS
      */
     Page<Sinistre> findByTypeUsageContainingIgnoreCase(String typeUsage, Pageable pageable);
 
-    // ✅ REQUÊTES AVANCÉES POUR LES MONTANTS
+    // âœ… REQUÃŠTES AVANCÃ‰ES POUR LES MONTANTS
 
     /**
-     * Sinistres avec montant d'évaluation supérieur à un seuil
+     * Sinistres avec montant d'Ã©valuation supÃ©rieur Ã  un seuil
      */
     @Query("SELECT s FROM Sinistre s WHERE s.montantEvaluation > :montant ORDER BY s.montantEvaluation DESC")
     Page<Sinistre> findByMontantEvaluationGreaterThan(@Param("montant") Double montant, Pageable pageable);
 
     /**
-     * Sinistres avec total règlement supérieur à un seuil
+     * Sinistres avec total rÃ¨glement supÃ©rieur Ã  un seuil
      */
     @Query("SELECT s FROM Sinistre s WHERE s.totalReglement > :montant ORDER BY s.totalReglement DESC")
     Page<Sinistre> findByTotalReglementGreaterThan(@Param("montant") Double montant, Pageable pageable);
@@ -102,10 +102,10 @@ public interface SinistreRepository extends JpaRepository<Sinistre, String>,JpaS
             "GROUP BY s.typeSinistre ORDER BY SUM(s.totalReglement) DESC")
     List<Object[]> getStatistiquesMontantsParType();
 
-    // ✅ REQUÊTES TEMPORELLES POUR LES DATES IMPORTANTES
+    // âœ… REQUÃŠTES TEMPORELLES POUR LES DATES IMPORTANTES
 
     /**
-     * Sinistres déclarés entre deux dates
+     * Sinistres dÃ©clarÃ©s entre deux dates
      */
     @Query("SELECT s FROM Sinistre s WHERE s.dateDeclaration BETWEEN :dateDebut AND :dateFin ORDER BY s.dateDeclaration DESC")
     Page<Sinistre> findByDateDeclarationBetween(@Param("dateDebut") Date dateDebut, @Param("dateFin") Date dateFin, Pageable pageable);
@@ -128,7 +128,7 @@ public interface SinistreRepository extends JpaRepository<Sinistre, String>,JpaS
     @Query("SELECT s FROM Sinistre s WHERE s.dateDeclaration < :dateLimit ORDER BY s.dateDeclaration ASC")
     Page<Sinistre> findSinistresAnciens(@Param("dateLimit") Date dateLimit, Pageable pageable);
 
-    // ✅ REQUÊTES DE RECHERCHE GLOBALE
+    // âœ… REQUÃŠTES DE RECHERCHE GLOBALE
 
     /**
      * Recherche globale dans les colonnes importantes
@@ -150,7 +150,7 @@ public interface SinistreRepository extends JpaRepository<Sinistre, String>,JpaS
     Page<Sinistre> searchInColonnesImportantes(@Param("searchTerm") String searchTerm, Pageable pageable);
 
     /**
-     * Recherche avancée avec critères multiples
+     * Recherche avancÃ©e avec critÃ¨res multiples
      */
     @Query("SELECT s FROM Sinistre s WHERE " +
             "(:natureSinistre IS NULL OR LOWER(s.natureSinistre) LIKE LOWER(CONCAT('%', :natureSinistre, '%'))) AND " +
@@ -173,7 +173,7 @@ public interface SinistreRepository extends JpaRepository<Sinistre, String>,JpaS
             Pageable pageable
     );
 
-    // ✅ REQUÊTES POUR LES PROVISIONS ET RECOURS
+    // âœ… REQUÃŠTES POUR LES PROVISIONS ET RECOURS
 
     /**
      * Sinistres avec provisions de recours
@@ -182,51 +182,51 @@ public interface SinistreRepository extends JpaRepository<Sinistre, String>,JpaS
     Page<Sinistre> findWithProvisionDeRecours(Pageable pageable);
 
     /**
-     * Sinistres avec prévisions de recours
+     * Sinistres avec prÃ©visions de recours
      */
     @Query("SELECT s FROM Sinistre s WHERE s.previsionDeRecoursDomVeh IS NOT NULL AND s.previsionDeRecoursDomVeh != '' ORDER BY s.dateDeclaration DESC")
     Page<Sinistre> findWithPrevisionDeRecours(Pageable pageable);
 
     /**
-     * Statistiques des provisions par état
+     * Statistiques des provisions par Ã©tat
      */
     @Query("SELECT s.libEtatSinistre, COUNT(s), SUM(s.provisionDeRecours), AVG(s.provisionDeRecours) " +
             "FROM Sinistre s WHERE s.provisionDeRecours IS NOT NULL AND s.provisionDeRecours > 0 " +
             "GROUP BY s.libEtatSinistre ORDER BY SUM(s.provisionDeRecours) DESC")
     List<Object[]> getStatistiquesProvisionsParEtat();
 
-    // ✅ REQUÊTES POUR LES RÈGLEMENTS
+    // âœ… REQUÃŠTES POUR LES RÃˆGLEMENTS
 
     /**
-     * Sinistres avec règlement RC
+     * Sinistres avec rÃ¨glement RC
      */
     @Query("SELECT s FROM Sinistre s WHERE s.reglementRc > 0 ORDER BY s.reglementRc DESC")
     Page<Sinistre> findWithReglementRc(Pageable pageable);
 
     /**
-     * Sinistres avec règlement défense et recours
+     * Sinistres avec rÃ¨glement dÃ©fense et recours
      */
     @Query("SELECT s FROM Sinistre s WHERE s.reglementDefenseEtRecours > 0 ORDER BY s.reglementDefenseEtRecours DESC")
     Page<Sinistre> findWithReglementDefenseEtRecours(Pageable pageable);
 
     /**
-     * Total des règlements par année
+     * Total des rÃ¨glements par annÃ©e
      */
     @Query("SELECT s.anneeExercice, SUM(s.totalReglement), COUNT(s) " +
             "FROM Sinistre s WHERE s.totalReglement IS NOT NULL " +
             "GROUP BY s.anneeExercice ORDER BY s.anneeExercice DESC")
     List<Object[]> getTotalReglementsParAnnee();
 
-    // ✅ REQUÊTES POUR LES SINISTRES CORPORELS
+    // âœ… REQUÃŠTES POUR LES SINISTRES CORPORELS
 
     /**
-     * Sinistres corporels avec blessés
+     * Sinistres corporels avec blessÃ©s
      */
     @Query("SELECT s FROM Sinistre s WHERE s.nombreBlesses > 0 ORDER BY s.nombreBlesses DESC, s.dateDeclaration DESC")
     Page<Sinistre> findSinistresCorporelsAvecBlesses(Pageable pageable);
 
     /**
-     * Sinistres corporels avec décès
+     * Sinistres corporels avec dÃ©cÃ¨s
      */
     @Query("SELECT s FROM Sinistre s WHERE s.nombreDeces > 0 ORDER BY s.nombreDeces DESC, s.dateDeclaration DESC")
     Page<Sinistre> findSinistresCorporelsAvecDeces(Pageable pageable);
@@ -238,28 +238,28 @@ public interface SinistreRepository extends JpaRepository<Sinistre, String>,JpaS
             "FROM Sinistre s WHERE s.natureSinistre = 'CORPOREL'")
     Object[] getStatistiquesSinistresCorporels();
 
-    // ✅ REQUÊTES POUR LE DASHBOARD
+    // âœ… REQUÃŠTES POUR LE DASHBOARD
 
     /**
-     * Top 10 des sinistres par montant d'évaluation
+     * Top 10 des sinistres par montant d'Ã©valuation
      */
     @Query("SELECT s FROM Sinistre s WHERE s.montantEvaluation IS NOT NULL ORDER BY s.montantEvaluation DESC")
     Page<Sinistre> findTop10ByMontantEvaluation(Pageable pageable);
 
     /**
-     * Sinistres récents (derniers 30 jours)
+     * Sinistres rÃ©cents (derniers 30 jours)
      */
     @Query("SELECT s FROM Sinistre s WHERE s.dateDeclaration >= :dateLimit ORDER BY s.dateDeclaration DESC")
     Page<Sinistre> findSinistresRecents(@Param("dateLimit") Date dateLimit, Pageable pageable);
 
     /**
-     * Sinistres en attente (état = MISE A JOUR ou REPRISE)
+     * Sinistres en attente (Ã©tat = MISE A JOUR ou REPRISE)
      */
     @Query("SELECT s FROM Sinistre s WHERE s.libEtatSinistre IN ('MISE A JOUR', 'REPRISE') ORDER BY s.dateDeclaration ASC")
     Page<Sinistre> findSinistresEnAttente(Pageable pageable);
 
     /**
-     * Résumé pour le dashboard
+     * RÃ©sumÃ© pour le dashboard
      */
     @Query("SELECT " +
             "COUNT(s) as total, " +

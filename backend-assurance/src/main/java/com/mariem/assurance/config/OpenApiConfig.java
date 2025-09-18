@@ -13,12 +13,12 @@ import io.swagger.v3.oas.annotations.servers.Server;
 @OpenAPIDefinition(
         info = @Info(
                 contact = @Contact(
-                        name = "Équipe Assurance Fraude",
+                        name = "Ã‰quipe Assurance Fraude",
                         email = "contact@assurance-fraude.com",
                         url = "https://assurance-fraude.com"
                 ),
-                description = "API de Détection de Fraude avec Authentification Bearer JWT",
-                title = "Système de Détection de Fraude - API Documentation",
+                description = "API de DÃ©tection de Fraude avec Authentification Bearer JWT",
+                title = "SystÃ¨me de DÃ©tection de Fraude - API Documentation",
                 version = "2.1.0",
                 license = @License(
                         name = "MIT License",
@@ -29,26 +29,26 @@ import io.swagger.v3.oas.annotations.servers.Server;
         servers = {
                 @Server(
                         description = "Environnement Local",
-                        url = "http://localhost:9099/api/v1"  // ✅ URL correcte avec préfixe
+                        url = "http://localhost:9099/api/v1"  // âœ… URL correcte avec prÃ©fixe
                 ),
                 @Server(
                         description = "Environnement de Production",
-                        url = "https://api.assurance-fraude.com/api/v1"  // ✅ URL de production
+                        url = "https://api.assurance-fraude.com/api/v1"  // âœ… URL de production
                 )
         },
         security = {
-                @SecurityRequirement(name = "bearerAuth")  // ✅ Authentification Bearer globale
+                @SecurityRequirement(name = "bearerAuth")  // âœ… Authentification Bearer globale
         }
 )
 @SecurityScheme(
-        name = "bearerAuth",  // ✅ Nom cohérent avec les contrôleurs
+        name = "bearerAuth",  // âœ… Nom cohÃ©rent avec les contrÃ´leurs
         type = SecuritySchemeType.HTTP,
         scheme = "bearer",
         bearerFormat = "JWT",
         in = SecuritySchemeIn.HEADER,
         description = "Authentification JWT Bearer Token. " +
                 "Format: 'Bearer {token}'. " +
-                "Obtenez votre token via Keycloak ou votre système d'authentification."
+                "Obtenez votre token via Keycloak ou votre systÃ¨me d'authentification."
 )
 public class OpenApiConfig {
 }

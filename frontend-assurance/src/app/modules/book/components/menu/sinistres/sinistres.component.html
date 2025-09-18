@@ -9,15 +9,12 @@
         Gestion des Sinistres
       </h2>
 
-      <!-- Actions à droite : texte résultats + Notifications + Reset -->
       <div class="d-flex align-items-center">
-
         <div class="results-info text-muted me-3">
           Affichage de <strong>{{ getStartIndex() }}</strong> à <strong>{{ getEndIndex() }}</strong>
           sur <strong>{{ totalElements | number }}</strong> sinistres
         </div>
 
-        <!-- Bouton NOTIFICATIONS (en haut, style Assurés) -->
         <button
           type="button"
           class="btn btn-primary px-4 py-2 me-3 d-flex align-items-center"
@@ -25,15 +22,11 @@
         >
           <i class="fas fa-bell me-2"></i>
           <span>Notifications</span>
-          <span
-            *ngIf="getActiveNotifications().length > 0"
-            class="badge bg-danger ms-2"
-          >
+          <span *ngIf="getActiveNotifications().length > 0" class="badge bg-danger ms-2">
             {{ getActiveNotifications().length }}
           </span>
         </button>
 
-        <!-- Reset filtres (à droite du bouton Notifs) -->
         <button type="button" class="btn btn-outline-secondary px-4 py-2" (click)="resetFilters()">
           <i class="fas fa-filter me-2"></i> Reset Filtres
         </button>
@@ -150,15 +143,12 @@
           <option *ngFor="let size of pageSizeOptions" [value]="size">{{ size }} / page</option>
         </select>
       </div>
-      <div class="col-md-2 text-end">
-        <div class="btn-group w-100">
-          <!-- Bouton Ajouter : ouvre juste le formulaire -->
-          <button class="btn btn-success" (click)="onClickAjouter()">
-            <i class="fas fa-plus-circle"></i> Ajouter
-          </button>
-          <button class="btn btn-outline-secondary" (click)="resetFilters()">
-            <i class="fas fa-filter"></i> Reset
-          </button>
+
+      <!-- Filtre front-only score ≥ threshold -->
+      <div class="col-md-2 d-flex align-items-center justify-content-end">
+        <div class="form-check">
+          <input id="chk50" class="form-check-input" type="checkbox" [(ngModel)]="showOnlyHigh">
+          <label for="chk50" class="form-check-label">Afficher score ≥ {{ riskThreshold }}%</label>
         </div>
       </div>
     </div>
@@ -245,8 +235,8 @@
   </div>
 
   <!-- =================== TABLEAU =================== -->
-  <div class="table-responsive mt-3" *ngIf="!loading && sinistres.length > 0">
-    <table class="table table-bordered table-striped table-hover">
+  <div class="table-responsive mt-3" *ngIf="!loading && tableData.length > 0">
+    <table class="table table-bordered table-striped table-hover sinistres-table">
       <thead class="table-dark">
       <tr>
         <th class="text-center" style="width:80px;">
@@ -269,7 +259,7 @@
       </thead>
 
       <tbody>
-      <tr *ngFor="let sinistre of sinistres; trackBy: trackBySinistre"
+      <tr *ngFor="let sinistre of tableData; trackBy: trackBySinistre"
           [class.table-danger]="(sinistre.fraudDetection?.isFraud ?? false) && ((sinistre.fraudDetection?.confidence ?? 0) > 0.8)"
           [class.table-warning]="(sinistre.fraudDetection?.isFraud ?? false) && ((sinistre.fraudDetection?.confidence ?? 0) <= 0.8)">
 
@@ -277,12 +267,12 @@
         <td class="text-center fraud-status-cell">
           <div class="fraud-indicator"
                [style.background-color]="getFraudColor(sinistre.numSinistre)"
-               (click)="showFraudDetails(sinistre)"
+               (click)="openDetails(sinistre)"
                [title]="'Score ML: ' + ((sinistre.fraudDetection?.fraudScore ?? 0)) + '% - ' + (sinistre.fraudDetection?.reason || 'Aucune analyse')">
             <i [class]="getFraudIcon(sinistre.numSinistre)" [style.color]="getFraudColor(sinistre.numSinistre)"></i>
             <div class="fraud-percentage">{{ (sinistre.fraudDetection?.fraudScore ?? 0) }}%</div>
             <div class="risk-badge" [ngClass]="'risk-' + ((sinistre.fraudDetection?.riskLevel || 'NORMAL').toLowerCase())">
-              {{ sinistre.fraudDetection.riskLevel || 'NORMAL' }}
+              {{ sinistre.fraudDetection?.riskLevel || 'NORMAL' }}
             </div>
           </div>
         </td>
@@ -307,15 +297,12 @@
             <button class="btn btn-outline-warning" (click)="updateSinistre(sinistre)" title="Modifier">
               <i class="fas fa-edit"></i>
             </button>
-            <button class="btn btn-outline-danger" (click)="deleteSinistre(sinistre.numSinistre)" title="Supprimer">
-              <i class="fas fa-trash"></i>
-            </button>
             <button class="btn btn-outline-primary" (click)="voirSinistre(sinistre)" title="Voir détails">
               <i class="fas fa-eye"></i>
             </button>
             <button *ngIf="sinistre.fraudDetection?.isFraud"
                     class="btn btn-outline-danger"
-                    (click)="showFraudDetails(sinistre)"
+                    (click)="openDetails(sinistre)"
                     title="Détails de la fraude ML">
               <i class="fas fa-exclamation-triangle"></i>
             </button>
@@ -323,11 +310,12 @@
         </td>
       </tr>
       </tbody>
+
     </table>
   </div>
 
   <!-- =================== AUCUN RÉSULTAT =================== -->
-  <div *ngIf="!loading && sinistres.length === 0" class="text-center my-5">
+  <div *ngIf="!loading && tableData.length === 0" class="text-center my-5">
     <div class="no-results">
       <i class="fas fa-search fa-3x text-muted mb-3"></i>
       <h4 class="text-muted">Aucun sinistre trouvé</h4>
@@ -431,17 +419,61 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
 
-        <hr class="my-3">
-        <div class="mt-2">
-          <h6 class="mb-2">Règles ML Spécifiques aux Sinistres :</h6>
-          <ul class="mb-0">
-            <li><strong>Montants suspects</strong> : Évaluations &gt; <strong>50 000 DT</strong></li>
-            <li><strong>Délais anormaux</strong> : Déclaration &gt; <strong>30 jours</strong> après survenance</li>
-            <li><strong>Sinistres corporels</strong> : Montants élevés avec circonstances douteuses</li>
-            <li><strong>Compagnies adverses</strong> : Entités inconnues ou suspectes</li>
-            <li><strong>Règlements anormaux</strong> : Supérieurs aux évaluations initiales</li>
-          </ul>
+  <!-- ========== MODAL DÉTAILS ========== -->
+  <div class="modal-backdrop fade show" *ngIf="detailOpen" style="display:block;"></div>
+  <div class="modal fade show" tabindex="-1" *ngIf="detailOpen" style="display:block;">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            Détails du sinistre — N° {{ selected?.numSinistre }} (Contrat {{ selected?.numContrat }})
+          </h5>
+          <button type="button" class="btn-close" (click)="closeDetails()"></button>
+        </div>
+
+        <div class="modal-body" *ngIf="selected as s">
+          <div class="d-flex align-items-center mb-3">
+            <div class="display-6 fw-bold me-3">{{ getSelectedScore() }}%</div>
+            <span class="badge" [ngClass]="riskClass(s.fraudDetection?.riskLevel)">
+              {{ s.fraudDetection?.riskLevel || 'NORMAL' }}
+            </span>
+          </div>
+
+          <div class="progress mb-3" style="height:10px;">
+            <div class="progress-bar"
+                 [class]="riskClass(s.fraudDetection?.riskLevel)"
+                 [style.width.%]="getSelectedScore()"></div>
+          </div>
+
+          <p class="text-muted">
+            <strong>Raison :</strong> {{ s.fraudDetection?.reason || 'Analyse ML' }}<br>
+            <strong>Confiance ML :</strong> {{ (s.fraudDetection?.confidence ?? 0) * 100 | number:'1.0-0' }}%
+          </p>
+
+          <ng-container *ngIf="s.fraudDetection?.riskFactors?.length">
+            <h6 class="mb-2">Signaux clés</h6>
+            <ul class="mb-3">
+              <li *ngFor="let r of s.fraudDetection?.riskFactors">{{ r }}</li>
+            </ul>
+          </ng-container>
+
+          <h6 class="mb-2">Infos sinistre</h6>
+          <div class="row">
+            <div class="col-6"><small class="text-muted">Date décla.</small><div>{{ formatDate(s.dateDeclaration) }}</div></div>
+            <div class="col-6"><small class="text-muted">Nature</small><div>{{ s.natureSinistre || '-' }}</div></div>
+            <div class="col-6"><small class="text-muted">Type</small><div>{{ s.typeSinistre || '-' }}</div></div>
+            <div class="col-6"><small class="text-muted">État</small><div>{{ s.libEtatSinistre || '-' }}</div></div>
+            <div class="col-6"><small class="text-muted">Lieu</small><div>{{ s.lieuAccident || '-' }}</div></div>
+            <div class="col-6"><small class="text-muted">Gouvernorat</small><div>{{ s.gouvernorat || '-' }}</div></div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" (click)="closeDetails()">Fermer</button>
         </div>
       </div>
     </div>

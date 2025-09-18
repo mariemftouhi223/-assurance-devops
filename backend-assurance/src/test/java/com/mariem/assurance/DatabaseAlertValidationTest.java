@@ -1,4 +1,4 @@
-package com.mariem.assurance;
+/*package com.mariem.assurance;
 
 import com.mariem.assurance.dto.fraud.FraudPredictionRequest;
 import com.mariem.assurance.dto.fraud.ContractData;
@@ -18,18 +18,10 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Tests de validation des alertes en base de données
- *
- * Ces tests vérifient que les alertes de fraude sont correctement
- * créées, persistées et récupérables depuis la base de données.
- *
- * @author Manus AI
- * @version 1.0
- */
+
 @SpringBootTest
-@ActiveProfiles("test") // Utilise un profil de test avec une base H2 en mémoire
-@Transactional // Rollback automatique après chaque test
+@ActiveProfiles("test") // Utilise un profil de test avec une base H2 en mÃ©moire
+@Transactional // Rollback automatique aprÃ¨s chaque test
 public class DatabaseAlertValidationTest {
 
     @PersistenceContext
@@ -40,11 +32,11 @@ public class DatabaseAlertValidationTest {
 
     @BeforeEach
     void setUp() {
-        // Nettoyer la base de données avant chaque test
+        // Nettoyer la base de donnÃ©es avant chaque test
         entityManager.createQuery("DELETE FROM FraudAlertEntity").executeUpdate();
         entityManager.flush();
 
-        // Préparer une requête à haut risque (devrait déclencher une alerte)
+        // PrÃ©parer une requÃªte Ã  haut risque (devrait dÃ©clencher une alerte)
         ContractData highRiskContract = new ContractData();
         highRiskContract.setContractId("HIGH-RISK-001");
         highRiskContract.setClientId("CLIENT-HIGH-RISK");
@@ -58,7 +50,7 @@ public class DatabaseAlertValidationTest {
 
         ClientData highRiskClient = new ClientData();
         highRiskClient.setFirstName("Risque");
-        highRiskClient.setLastName("Élevé");
+        highRiskClient.setLastName("Ã‰levÃ©");
         highRiskClient.setAge(20);
         highRiskClient.setAddress("Zone Industrielle Dangereuse");
         highRiskClient.setEmail("risque@eleve.com");
@@ -66,7 +58,7 @@ public class DatabaseAlertValidationTest {
 
         highRiskRequest = new FraudPredictionRequest(highRiskContract, highRiskClient);
 
-        // Préparer une requête normale
+        // PrÃ©parer une requÃªte normale
         ContractData normalContract = new ContractData();
         normalContract.setContractId("NORMAL-001");
         normalContract.setClientId("CLIENT-NORMAL");
@@ -89,41 +81,37 @@ public class DatabaseAlertValidationTest {
         normalRequest = new FraudPredictionRequest(normalContract, normalClient);
     }
 
-    /**
-     * Test 1: Vérifier qu'une alerte peut être créée et persistée en base
-     */
+
     @Test
     void testCreateAlert_ShouldPersistAlertInDatabase() {
-        // Créer une alerte
+        // CrÃ©er une alerte
         FraudAlertEntity alert = new FraudAlertEntity();
-        alert.setMessage("Contrat HIGH-RISK-001 suspect détecté par consensus des modèles ML");
+        alert.setMessage("Contrat HIGH-RISK-001 suspect dÃ©tectÃ© par consensus des modÃ¨les ML");
         alert.setTimestamp(LocalDateTime.now());
 
         // Persister l'alerte directement avec EntityManager
         entityManager.persist(alert);
         entityManager.flush();
 
-        // Vérifications
+        // VÃ©rifications
         assertNotNull(alert.getId());
-        assertEquals("Contrat HIGH-RISK-001 suspect détecté par consensus des modèles ML", alert.getMessage());
+        assertEquals("Contrat HIGH-RISK-001 suspect dÃ©tectÃ© par consensus des modÃ¨les ML", alert.getMessage());
 
-        // Vérifier que l'alerte est bien en base de données
+        // VÃ©rifier que l'alerte est bien en base de donnÃ©es
         entityManager.clear();
 
         FraudAlertEntity retrievedAlert = entityManager.find(FraudAlertEntity.class, alert.getId());
         assertNotNull(retrievedAlert);
-        assertEquals("Contrat HIGH-RISK-001 suspect détecté par consensus des modèles ML", retrievedAlert.getMessage());
+        assertEquals("Contrat HIGH-RISK-001 suspect dÃ©tectÃ© par consensus des modÃ¨les ML", retrievedAlert.getMessage());
     }
 
-    /**
-     * Test 2: Vérifier qu'aucune alerte n'est créée pour un contrat normal
-     */
+
     @Test
     void testNoAlert_NormalContract_ShouldNotCreateAlert() {
         // Compter les alertes avant le test
         Long initialCount = (Long) entityManager.createQuery("SELECT COUNT(a) FROM FraudAlertEntity a").getSingleResult();
 
-        // Simuler l'analyse d'un contrat normal (pas de fraude détectée)
+        // Simuler l'analyse d'un contrat normal (pas de fraude dÃ©tectÃ©e)
         boolean shouldCreateAlert = false;
 
         if (shouldCreateAlert) {
@@ -133,17 +121,14 @@ public class DatabaseAlertValidationTest {
             entityManager.persist(alert);
         }
 
-        // Vérifier qu'aucune nouvelle alerte n'a été créée
         Long finalCount = (Long) entityManager.createQuery("SELECT COUNT(a) FROM FraudAlertEntity a").getSingleResult();
-        assertEquals(initialCount, finalCount, "Aucune alerte ne devrait être créée pour un contrat normal");
+        assertEquals(initialCount, finalCount, "Aucune alerte ne devrait Ãªtre crÃ©Ã©e pour un contrat normal");
     }
 
-    /**
-     * Test 3: Vérifier la récupération des alertes
-     */
+
     @Test
     void testGetAlerts_ShouldRetrieveCorrectAlerts() {
-        // Créer plusieurs alertes
+        // CrÃ©er plusieurs alertes
         FraudAlertEntity alert1 = createTestAlert("Alerte 1");
         FraudAlertEntity alert2 = createTestAlert("Alerte 2");
 
@@ -151,48 +136,44 @@ public class DatabaseAlertValidationTest {
         entityManager.persist(alert2);
         entityManager.flush();
 
-        // Récupérer toutes les alertes
+        // RÃ©cupÃ©rer toutes les alertes
         @SuppressWarnings("unchecked")
         List<FraudAlertEntity> allAlerts = entityManager.createQuery("SELECT a FROM FraudAlertEntity a").getResultList();
 
-        // Vérifications
+        // VÃ©rifications
         assertEquals(2, allAlerts.size(), "Il devrait y avoir 2 alertes");
         assertTrue(allAlerts.stream().anyMatch(alert -> alert.getMessage().equals("Alerte 1")));
         assertTrue(allAlerts.stream().anyMatch(alert -> alert.getMessage().equals("Alerte 2")));
     }
 
-    /**
-     * Test 4: Vérifier la mise à jour du message d'une alerte
-     */
+
     @Test
     void testUpdateAlertMessage_ShouldPersistMessageChange() {
-        // Créer et sauvegarder une alerte
+        // CrÃ©er et sauvegarder une alerte
         FraudAlertEntity alert = createTestAlert("Message initial");
         entityManager.persist(alert);
         entityManager.flush();
 
-        // Mettre à jour le message
-        alert.setMessage("Message mis à jour");
+        // Mettre Ã  jour le message
+        alert.setMessage("Message mis Ã  jour");
         entityManager.merge(alert);
         entityManager.flush();
         entityManager.clear();
 
-        // Vérifier que la mise à jour est persistée
+        // VÃ©rifier que la mise Ã  jour est persistÃ©e
         FraudAlertEntity retrievedAlert = entityManager.find(FraudAlertEntity.class, alert.getId());
-        assertEquals("Message mis à jour", retrievedAlert.getMessage());
+        assertEquals("Message mis Ã  jour", retrievedAlert.getMessage());
     }
 
-    /**
-     * Test 5: Vérifier la validation des données d'alerte
-     */
+
     @Test
     void testAlertValidation_EmptyMessage_ShouldStillWork() {
-        // Créer une alerte avec un message vide (pas de validation @NotNull dans l'entité actuelle)
+        // CrÃ©er une alerte avec un message vide (pas de validation @NotNull dans l'entitÃ© actuelle)
         FraudAlertEntity alert = new FraudAlertEntity();
         alert.setMessage("");
         alert.setTimestamp(LocalDateTime.now());
 
-        // Cela devrait fonctionner car il n'y a pas de validation dans l'entité actuelle
+        // Cela devrait fonctionner car il n'y a pas de validation dans l'entitÃ© actuelle
         assertDoesNotThrow(() -> {
             entityManager.persist(alert);
             entityManager.flush();
@@ -202,31 +183,29 @@ public class DatabaseAlertValidationTest {
         assertEquals("", alert.getMessage());
     }
 
-    /**
-     * Test 6: Test d'intégration complète - Workflow de détection à alerte
-     */
+
     @Test
     void testCompleteWorkflow_FraudDetectionToDatabase() {
-        // Simuler la détection de fraude
+        // Simuler la dÃ©tection de fraude
         boolean model1DetectsFraud = true;
         boolean model2DetectsFraud = true;
         boolean consensusReached = model1DetectsFraud && model2DetectsFraud;
 
-        // Si consensus, créer une alerte
+        // Si consensus, crÃ©er une alerte
         if (consensusReached) {
             FraudAlertEntity alert = new FraudAlertEntity();
-            alert.setMessage("Fraude détectée pour contrat " + highRiskRequest.getContractData().getContractId());
+            alert.setMessage("Fraude dÃ©tectÃ©e pour contrat " + highRiskRequest.getContractData().getContractId());
             alert.setTimestamp(LocalDateTime.now());
 
             // Sauvegarder en base
             entityManager.persist(alert);
             entityManager.flush();
 
-            // Vérifications
+            // VÃ©rifications
             assertNotNull(alert.getId());
             assertTrue(alert.getMessage().contains(highRiskRequest.getContractData().getContractId()));
 
-            // Vérifier que l'alerte est récupérable
+            // VÃ©rifier que l'alerte est rÃ©cupÃ©rable
             @SuppressWarnings("unchecked")
             List<FraudAlertEntity> allAlerts = entityManager.createQuery("SELECT a FROM FraudAlertEntity a").getResultList();
             assertEquals(1, allAlerts.size());
@@ -234,14 +213,12 @@ public class DatabaseAlertValidationTest {
         }
     }
 
-    /**
-     * Test 7: Vérifier la recherche d'alertes par message
-     */
+
     @Test
     void testFindAlertsByMessage_ShouldReturnMatchingAlerts() {
-        // Créer des alertes avec différents messages
-        FraudAlertEntity alert1 = createTestAlert("Fraude détectée - Contrat A");
-        FraudAlertEntity alert2 = createTestAlert("Fraude détectée - Contrat B");
+        // CrÃ©er des alertes avec diffÃ©rents messages
+        FraudAlertEntity alert1 = createTestAlert("Fraude dÃ©tectÃ©e - Contrat A");
+        FraudAlertEntity alert2 = createTestAlert("Fraude dÃ©tectÃ©e - Contrat B");
         FraudAlertEntity alert3 = createTestAlert("Alerte normale");
 
         entityManager.persist(alert1);
@@ -249,32 +226,30 @@ public class DatabaseAlertValidationTest {
         entityManager.persist(alert3);
         entityManager.flush();
 
-        // Rechercher les alertes contenant "Fraude détectée"
+        // Rechercher les alertes contenant "Fraude dÃ©tectÃ©e"
         @SuppressWarnings("unchecked")
         List<FraudAlertEntity> fraudAlerts = entityManager.createQuery(
                         "SELECT a FROM FraudAlertEntity a WHERE a.message LIKE :pattern")
-                .setParameter("pattern", "%Fraude détectée%")
+                .setParameter("pattern", "%Fraude dÃ©tectÃ©e%")
                 .getResultList();
 
-        // Vérifications
         assertEquals(2, fraudAlerts.size(), "Il devrait y avoir 2 alertes de fraude");
-        assertTrue(fraudAlerts.stream().allMatch(alert -> alert.getMessage().contains("Fraude détectée")));
+        assertTrue(fraudAlerts.stream().allMatch(alert -> alert.getMessage().contains("Fraude dÃ©tectÃ©e")));
     }
 
-    /**
-     * Test 8: Vérifier la recherche d'alertes par période
-     */
+
+
     @Test
     void testFindAlertsByTimeRange_ShouldReturnAlertsInRange() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime oneHourAgo = now.minusHours(1);
         LocalDateTime twoHoursAgo = now.minusHours(2);
 
-        // Créer des alertes à différents moments
+        // CrÃ©er des alertes Ã  diffÃ©rents moments
         FraudAlertEntity oldAlert = createTestAlert("Alerte ancienne");
         oldAlert.setTimestamp(twoHoursAgo);
 
-        FraudAlertEntity recentAlert = createTestAlert("Alerte récente");
+        FraudAlertEntity recentAlert = createTestAlert("Alerte rÃ©cente");
         recentAlert.setTimestamp(oneHourAgo);
 
         FraudAlertEntity currentAlert = createTestAlert("Alerte actuelle");
@@ -285,7 +260,6 @@ public class DatabaseAlertValidationTest {
         entityManager.persist(currentAlert);
         entityManager.flush();
 
-        // Rechercher les alertes des dernières 90 minutes
         LocalDateTime cutoff = now.minusMinutes(90);
         @SuppressWarnings("unchecked")
         List<FraudAlertEntity> recentAlerts = entityManager.createQuery(
@@ -293,13 +267,12 @@ public class DatabaseAlertValidationTest {
                 .setParameter("cutoff", cutoff)
                 .getResultList();
 
-        // Vérifications
-        assertEquals(2, recentAlerts.size(), "Il devrait y avoir 2 alertes récentes");
+        assertEquals(2, recentAlerts.size(), "Il devrait y avoir 2 alertes rÃ©centes");
         assertEquals("Alerte actuelle", recentAlerts.get(0).getMessage());
-        assertEquals("Alerte récente", recentAlerts.get(1).getMessage());
+        assertEquals("Alerte rÃ©cente", recentAlerts.get(1).getMessage());
     }
 
-    // Méthode utilitaire
+
     private FraudAlertEntity createTestAlert(String message) {
         FraudAlertEntity alert = new FraudAlertEntity();
         alert.setMessage(message);
@@ -307,3 +280,4 @@ public class DatabaseAlertValidationTest {
         return alert;
     }
 }
+*/

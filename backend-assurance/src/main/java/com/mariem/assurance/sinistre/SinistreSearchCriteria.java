@@ -3,11 +3,11 @@ package com.mariem.assurance.sinistre;
 import java.time.LocalDateTime;
 
 /**
- * Classe DTO pour les critères de recherche avancée des sinistres
+ * Classe DTO pour les critÃ¨res de recherche avancÃ©e des sinistres
  */
 public class SinistreSearchCriteria {
 
-    // Critères de base
+    // CritÃ¨res de base
     private String numContrat;
     private Integer anneeExercice;
     private String natureSinistre;
@@ -19,7 +19,7 @@ public class SinistreSearchCriteria {
     private String compagnieAdverse;
     private Integer codeResponsabilite;
 
-    // Critères de dates
+    // CritÃ¨res de dates
     private LocalDateTime dateDeclarationDebut;
     private LocalDateTime dateDeclarationFin;
     private LocalDateTime dateSurvenanceDebut;
@@ -27,13 +27,13 @@ public class SinistreSearchCriteria {
     private LocalDateTime dateOuvertureDebut;
     private LocalDateTime dateOuvertureFin;
 
-    // Critères de montants
+    // CritÃ¨res de montants
     private Double montantEvaluationMin;
     private Double montantEvaluationMax;
     private Double totalReglementMin;
     private Double totalReglementMax;
 
-    // Critères numériques
+    // CritÃ¨res numÃ©riques
     private Integer nombreBlessesMin;
     private Integer nombreBlessesMax;
     private Integer nombreDecesMin;

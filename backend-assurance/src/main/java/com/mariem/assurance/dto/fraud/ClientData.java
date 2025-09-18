@@ -1,25 +1,14 @@
 package com.mariem.assurance.dto.fraud;
 
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 
 @Data
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)  // snake_case requis par Flask
 public class ClientData {
-    private String firstName;
-    private String lastName;
-    private Integer age;
-
-    private String address;
-    private String email;
-    private String phone;
-
-    public ClientData() {}
-
-    public ClientData(String firstName, String lastName, int age, String address, String email, String phone) {
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.age = age;
-        this.address = address;
-        this.email = email;
-        this.phone = phone;
-    }
+    private Integer ageConducteur; // dÃ©rivÃ© de dateNaissance
+    private String sexe;           // "M" / "F"
+    private String ville;          // ex: "LE BARDO"
+    private Integer codePostal;    // ex: 2000
 }
