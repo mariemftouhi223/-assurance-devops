@@ -10,9 +10,11 @@ services:
 
   ml-fraud-service:
     ports: ["127.0.0.1::5000"]
+    volumes: []     # ⬅️ important en CI
 
   ml-fraud-service-2:
     ports: ["127.0.0.1::5001"]
+    volumes: []     # ⬅️ important en CI
 
   metabase:
     ports: ["127.0.0.1::3000"]
