@@ -1,6 +1,5 @@
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-.uploads
+venv/
+venv_clean/
+venv_local_backup/
+__pycache__/
+*.pyc
