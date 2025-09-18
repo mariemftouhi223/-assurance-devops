@@ -9,7 +9,7 @@ venv
 notebooks/
 data/
 datasets/
-models/
 tmp/
 Dockerfile
 docker-compose*.yml
+
