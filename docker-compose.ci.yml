@@ -10,11 +10,13 @@ services:
 
   ml-fraud-service:
     ports: ["127.0.0.1::5000"]
-    volumes: []     # ⬅️ important en CI
+    # supprime tout mount hérité :
+    volumes: null
 
   ml-fraud-service-2:
     ports: ["127.0.0.1::5001"]
-    volumes: []     # ⬅️ important en CI
-
+    # supprime tout mount hérité :
+    volumes: null
   metabase:
     ports: ["127.0.0.1::3000"]
+
